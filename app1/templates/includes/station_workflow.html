@@ -1,0 +1,103 @@
+<!-- Station Workflow Component -->
+<!-- This component displays the current station, progress, and action buttons -->
+<div class="card mb-3">
+    <div class="card-header" style="background: linear-gradient(90deg, {{ service_request.current_station.color }}, {{ service_request.current_station.color }}dd);">
+        <h5 class="text-white mb-0">
+            <i class="fas fa-route"></i> مسار العمل: {{ service_request.pipeline.name_ar }}
+        </h5>
+    </div>
+    <div class="card-body">
+        <!-- Progress Bar -->
+        <div class="mb-3">
+            <label class="form-label"><strong>التقدم:</strong></label>
+            <div class="progress" style="height: 25px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" 
+                     style="width: {{ progress }}%; background-color: {{ service_request.current_station.color }};"
+                     aria-valuenow="{{ progress }}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100">
+                    {{ progress }}%
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Station -->
+        <div class="mb-3">
+            <label class="form-label"><strong>المحطة الحالية:</strong></label>
+            <div>
+                <span class="badge fs-5 p-2" style="background-color: {{ service_request.current_station.color }};">
+                    <i class="fas fa-circle"></i> {{ service_request.current_station.name_ar }}
+                </span>
+                {% if service_request.is_completed %}
+                <span class="badge bg-success fs-6 p-2 ms-2">
+                    <i class="fas fa-check-circle"></i> مكتمل
+                </span>
+                {% endif %}
+            </div>
+            <small class="text-muted">دخل هذه المحطة في: {{ service_request.station_entered_at|date:"Y-m-d H:i" }}</small>
+        </div>
+
+        <!-- Station Timeline -->
+        <div class="mb-3">
+            <label class="form-label"><strong>مراحل المسار:</strong></label>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                {% for station in pipeline_stations %}
+                <div class="text-center">
+                    <div class="badge {% if station == service_request.current_station %}shadow-lg{% endif %}" 
+                         style="background-color: {% if station.order <= service_request.current_station.order %}{{ station.color }}{% else %}#6c757d{% endif %}; padding: 8px 12px;">
+                        {{ station.name_ar }}
+                    </div>
+                </div>
+                {% if not forloop.last %}
+                <i class="fas fa-arrow-left text-muted"></i>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        {% if not is_completed %}
+        <div class="mt-4">
+            <label class="form-label"><strong>الإجراءات:</strong></label>
+            <div class="btn-group-vertical w-100 gap-2" role="group">
+                <!-- Move to Next Station -->
+                {% if next_station and can_move_next %}
+                <a href="{% url 'move_to_next' service_request.id %}" class="btn btn-success btn-lg">
+                    <i class="fas fa-arrow-circle-left"></i> الانتقال إلى: {{ next_station.name_ar }}
+                </a>
+                {% elif next_station %}
+                <button class="btn btn-secondary btn-lg" disabled title="ليس لديك صلاحية للانتقال">
+                    <i class="fas fa-lock"></i> الانتقال إلى: {{ next_station.name_ar }}
+                </button>
+                {% endif %}
+
+                <!-- Manual Station Selection (if user has access to other stations) -->
+                {% if accessible_stations|length > 1 %}
+                <div class="dropdown">
+                    <button class="btn btn-outline-primary btn-lg dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-exchange-alt"></i> الانتقال إلى محطة محددة
+                    </button>
+                    <ul class="dropdown-menu w-100">
+                        {% for station in accessible_stations %}
+                        {% if station != service_request.current_station %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'move_to_station' service_request.id station.id %}">
+                                <span class="badge me-2" style="background-color: {{ station.color }};">{{ station.order }}</span>
+                                {{ station.name_ar }}
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle"></i> تم إكمال هذا الطلب بنجاح!
+        </div>
+        {% endif %}
+    </div>
+</div>

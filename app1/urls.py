@@ -34,7 +34,8 @@ urlpatterns = [
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
     path('print_request/<int:id>/', views.print_request, name='print_request'),
     path('assign_to_user/<int:id>/', views.assign_to_user, name='assign_to_user'),
-
-
-
+    
+    # New station transition URLs
+    path('move_to_next/<int:id>/', views.move_to_next_station_view, name='move_to_next'),
+    path('move_to_station/<int:id>/<int:station_id>/', views.move_to_station_view, name='move_to_station'),
 ]

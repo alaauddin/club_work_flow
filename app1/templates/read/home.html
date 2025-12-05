@@ -20,6 +20,13 @@
     .stats .card {
       min-width: 200px;
     }
+    .station-card {
+      border-right: 4px solid;
+      transition: all 0.3s ease;
+    }
+    .station-card:hover {
+      transform: translateY(-5px) scale(1.02);
+    }
   </style>
 {% endblock %}
 
@@ -32,13 +39,16 @@
       <p class="text-muted">نظرة عامة على طلبات الخدمة والتقارير</p>
     </div>
   </div>
+  
   <div class="row my-4 text-center">
     <div class="col-12">
-      <canvas id="sectionStatusChart"></canvas>
+      <canvas id="sectionStationChart"></canvas>
     </div>
   </div>
+  
   <!-- بطاقات الإحصائيات -->
   <div class="row g-3">
+    <!-- Total Requests -->
     <div class="col-sm-6 col-md-4 col-lg-3">
       <div class="card text-white bg-primary shadow">
         <div class="card-body">
@@ -47,38 +57,28 @@
         </div>
       </div>
     </div>
+    
+    <!-- Dynamic Station Cards -->
+    {% for station in stations %}
     <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white bg-warning shadow">
+      <div class="card text-white shadow station-card" 
+           style="background-color: {{ station.color }}; border-right-color: {{ station.color }};">
         <div class="card-body">
-          <h5 class="card-title">قيد الانتظار</h5>
-          <p class="card-text fs-4">{{ pending_requests }}</p>
+          <h5 class="card-title">
+            <i class="fas fa-circle me-2"></i>{{ station.name_ar }}
+          </h5>
+          <p class="card-text fs-4">
+            {{ station.request_count|default:0 }}
+          </p>
+          {% if station.description %}
+          <small class="text-white-50">{{ station.description }}</small>
+          {% endif %}
         </div>
       </div>
     </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white bg-info shadow">
-        <div class="card-body">
-          <h5 class="card-title">قيد التنفيذ</h5>
-          <p class="card-text fs-4">{{ in_progress_requests }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white bg-secondary shadow">
-        <div class="card-body">
-          <h5 class="card-title">قيد المراجعة</h5>
-          <p class="card-text fs-4">{{ under_review_requests }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white bg-success shadow">
-        <div class="card-body">
-          <h5 class="card-title">مكتمل</h5>
-          <p class="card-text fs-4">{{ completed_requests }}</p>
-        </div>
-      </div>
-    </div>
+    {% endfor %}
+    
+    <!-- Other Stats -->
     <div class="col-sm-6 col-md-4 col-lg-3">
       <div class="card bg-light shadow">
         <div class="card-body">
@@ -113,30 +113,31 @@
     </div>
   </div>
 </div>
-<!-- Bar Chart for Service Requests by Section and Status -->
 
-
+<!-- Bar Chart for Service Requests by Section and Station -->
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Parse the JSON-encoded context variables.
+  // Parse the JSON-encoded context variables
   const sections = JSON.parse('{{ chart_sections|safe }}');
-  const statusChoices = JSON.parse('{{ status_choices|safe }}');
+  const stationNames = JSON.parse('{{ station_names|safe }}');
   const chartData = JSON.parse('{{ chart_data|safe }}');
 
-  // Generate datasets for each status with different colors
-  const datasets = statusChoices.map(status => {
-    let color;
-    switch (status) {
-      case 'pending': color = 'rgba(255, 206, 86, 0.6)'; break;
-      case 'in_progress': color = 'rgba(54, 162, 235, 0.6)'; break;
-      case 'under_review': color = 'rgba(153, 102, 255, 0.6)'; break;
-      case 'completed': color = 'rgba(75, 192, 192, 0.6)'; break;
-      default: color = 'rgba(201, 203, 207, 0.6)';
-    }
+  // Generate datasets for each station with their colors
+  const datasets = stationNames.map((stationName, index) => {
+    // Get station color from the data if available, otherwise use defaults
+    const stationColors = {
+      'Pending': 'rgba(255, 206, 86, 0.6)',
+      'In Progress': 'rgba(54, 162, 235, 0.6)',
+      'Under Review': 'rgba(153, 102, 255, 0.6)',
+      'Completed': 'rgba(75, 192, 192, 0.6)'
+    };
+    
+    const color = stationColors[stationName] || `rgba(${Math.floor(Math.random()*200+50)}, ${Math.floor(Math.random()*200+50)}, ${Math.floor(Math.random()*200+50)}, 0.6)`;
+    
     return {
-      label: status,
-      data: chartData[status],
+      label: stationName,
+      data: chartData[stationName] || [],
       backgroundColor: color,
       borderColor: color.replace('0.6', '1'),
       borderWidth: 1
@@ -144,8 +145,8 @@
   });
 
   // Create the bar chart using Chart.js
-  const ctx = document.getElementById('sectionStatusChart').getContext('2d');
-  const sectionStatusChart = new Chart(ctx, {
+  const ctx = document.getElementById('sectionStationChart').getContext('2d');
+  const sectionStationChart = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: sections,
@@ -153,16 +154,25 @@
     },
     options: {
       responsive: true,
+      plugins: {
+        title: {
+          display: true,
+          text: 'توزيع الطلبات حسب القسم والمحطة'
+        },
+        legend: {
+          display: true,
+          position: 'top'
+        }
+      },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { stepSize:1 }
+          ticks: { stepSize: 1 }
         }
       }
     }
   });
 </script>
-
 
 <!-- تضمين Bootstrap JS Bundle مع Popper (إذا لم يتم تضمينه مسبقًا في base.html) -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

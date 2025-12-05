@@ -1,19 +1,19 @@
 from django.shortcuts import redirect, render
+from django.contrib import messages
+from django.db.models import Count, Q
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.views.decorators.http import require_POST
+from django.core.serializers import serialize
+from django.utils.dateformat import format as date_format
 
 from app1.forms import CompletionReportForm, InventoryOrderForm, PurchaseOrderForm, ServiceRequestLogForm
 from .models import *
-from django.contrib import messages
-
-
-from django.db.models import Count
 
 import json
-from django.db.models import Count
-import requests
-
-
 import threading
 import requests
+
 
 def send_message(number, message):
     def send():
@@ -28,7 +28,7 @@ def send_message(number, message):
             response = requests.post(
                 url="http://185.216.203.97:8070/AWE/Api/index.php",
                 data=data,
-                timeout=20  # Optional: prevent long hanging
+                timeout=20
             )
             print(response.json())
         except Exception as e:
@@ -37,148 +37,168 @@ def send_message(number, message):
     threading.Thread(target=send).start()
 
 
+# ============================================================================
+# HELPER FUNCTIONS FOR STATION WORKFLOW
+# ============================================================================
+
+def can_user_access_station(user, station):
+    """Check if user is allowed to work in this station"""
+    if not station.allowed_users.exists():
+        return True  # No restrictions if allowed_users is empty
+    return station.allowed_users.filter(id=user.id).exists()
 
 
+def get_station_by_name(name):
+    """Get station by name, returns None if not found"""
+    try:
+        return Station.objects.get(name=name)
+    except Station.DoesNotExist:
+        return None
 
+
+# ============================================================================
+# DASHBOARD & LISTINGS
+# ============================================================================
 
 def home(request):
-    # Count Service Requests by status
+    # Count Service Requests by current station instead of status
     total_requests = ServiceRequest.objects.count()
-    pending_requests = ServiceRequest.objects.filter(status='pending').count()
-    in_progress_requests = ServiceRequest.objects.filter(status='in_progress').count()
-    under_review_requests = ServiceRequest.objects.filter(status='under_review').count()
-    completed_requests = ServiceRequest.objects.filter(status='completed').count()
-
+    
+    # Get station-based counts
+    station_counts = {}
+    stations = Station.objects.all().order_by('order')
+    
+    # Annotate each station with its request count
+    from django.db.models import Count
+    stations_with_counts = []
+    for station in stations:
+        count = ServiceRequest.objects.filter(current_station=station).count()
+        station.request_count = count  # Add as attribute
+        stations_with_counts.append(station)
+        station_counts[station.name.lower().replace(' ', '_')] = count
+    
     # Count Reports and related objects
     total_reports = Report.objects.count()
     total_completion_reports = CompletionReport.objects.count()
     total_purchase_orders = PurchaseOrder.objects.count()
     total_inventory_orders = InventoryOrder.objects.count()
 
-    # --- New Code for Chart Data ---
-    # Aggregate counts for each section and status
-    section_status_data = ServiceRequest.objects.values('section__name', 'status').annotate(count=Count('id'))
+    # Chart Data - Aggregate counts for each section and station
+    section_station_data = ServiceRequest.objects.values(
+        'section__name', 'current_station__name'
+    ).annotate(count=Count('id'))
     
-    # Get all section names (you may sort them if needed)
+    # Get all section names
     sections = list(Section.objects.values_list('name', flat=True))
     
-    # Define the statuses you want to chart
-    status_choices = ['pending', 'in_progress', 'under_review', 'completed']
+    # Get all station names for the chart
+    station_names = list(stations.values_list('name', flat=True))
     
-    # Initialize a dictionary to hold counts for each status per section.
-    chart_data = {status: [0] * len(sections) for status in status_choices}
+    # Initialize chart data dictionary
+    chart_data = {station.name: [0] * len(sections) for station in stations}
     
-    # Create a mapping for section name to its index in the list
+    # Create a mapping for section name to its index
     section_index = {name: i for i, name in enumerate(sections)}
     
-    # Populate chart_data with the counts from the aggregation query.
-    for entry in section_status_data:
+    # Populate chart_data with the counts
+    for entry in section_station_data:
         section_name = entry['section__name']
-        status = entry['status']
-        if section_name in section_index:
+        station_name = entry['current_station__name']
+        if section_name in section_index and station_name:
             idx = section_index[section_name]
-            chart_data[status][idx] = entry['count']
-    # --- End of New Code ---
+            chart_data[station_name][idx] = entry['count']
 
     context = {
         'total_requests': total_requests,
-        'pending_requests': pending_requests,
-        'in_progress_requests': in_progress_requests,
-        'under_review_requests': under_review_requests,
-        'completed_requests': completed_requests,
+        'station_counts': station_counts,
+        'stations': stations_with_counts,  # Use annotated stations
         'total_reports': total_reports,
         'total_completion_reports': total_completion_reports,
         'total_purchase_orders': total_purchase_orders,
         'total_inventory_orders': total_inventory_orders,
-        # Encode data as JSON strings:
+        # Chart data
         'chart_sections': json.dumps(sections),
         'chart_data': json.dumps(chart_data),
-        'status_choices': json.dumps(status_choices),
+        'station_names': json.dumps(station_names),
     }
 
     return render(request, 'read/home.html', context)
 
 
-
-
-
 def my_request(request):
     section = Section.objects.filter(manager=request.user)
     filter_type = request.GET.get('filter', 'all')
+    
+    service_requests = ServiceRequest.objects.filter(section__in=section)
 
     if filter_type == 'supplied':
-        service_requests = ServiceRequest.objects.filter(
-            section__in=section,
+        service_requests = service_requests.filter(
             reports__purchase_order__status='supplied'
         )
-    elif filter_type == 'pending':
-        service_requests = ServiceRequest.objects.filter(
-            section__in=section,
-            status='pending'
-        )
-    elif filter_type == 'in_progress':
-        service_requests = ServiceRequest.objects.filter(
-            section__in=section,
-            status='in_progress'
-        )
-    elif filter_type == 'under_review':
-        service_requests = ServiceRequest.objects.filter(
-            section__in=section,
-            status='under_review'
-        )
-    else:
-        service_requests = ServiceRequest.objects.filter(section__in=section)
+    elif filter_type != 'all':
+        # Try to filter by station name
+        station = get_station_by_name(filter_type.replace('_', ' ').title())
+        if station:
+            service_requests = service_requests.filter(current_station=station)
     
-    service_requests = service_requests.order_by('-id')
+    service_requests = service_requests.order_by('-id').distinct()
+
+    # Get all stations for filter dropdown
+    stations = Station.objects.all().order_by('order')
 
     context = {
         'service_requests': service_requests,
-        'filter': filter_type,  # pass the current filter to the template if needed for active styling
+        'filter': filter_type,
+        'stations': stations,
     }
     return render(request, 'read/my_request.html', context)
+
 
 def requests_to_me(request):
     service_providers = ServiceProvider.objects.filter(manager=request.user)
     filter_type = request.GET.get('filter', 'all')
     assigned_user_id = request.GET.get('assigned_to', '').strip()
 
+    service_requests = ServiceRequest.objects.filter(service_provider__in=service_providers)
+
     if filter_type == 'supplied':
-        service_requests = ServiceRequest.objects.filter(
-            service_provider__in=service_providers,
+        service_requests = service_requests.filter(
             reports__purchase_order__status='supplied'
         )
-    elif filter_type == 'pending':
-        service_requests = ServiceRequest.objects.filter(
-            service_provider__in=service_providers,
-            status='pending'
-        )
-    elif filter_type == 'under_review':
-        service_requests = ServiceRequest.objects.filter(
-            service_provider__in=service_providers,
-            status='under_review'
-        )
     elif filter_type == 'assigned_to_me':
-        service_requests = ServiceRequest.objects.filter(
-            service_provider__in=service_providers,
-            assigned_to=request.user
-        )
-    else:
-        service_requests = ServiceRequest.objects.filter(service_provider__in=service_providers)
+        service_requests = service_requests.filter(assigned_to=request.user)
+    elif filter_type != 'all':
+        # Try to filter by station name
+        station = get_station_by_name(filter_type.replace('_', ' ').title())
+        if station:
+            service_requests = service_requests.filter(current_station=station)
 
     if assigned_user_id == 'unassigned':
         service_requests = service_requests.filter(assigned_to__isnull=True)
     elif assigned_user_id:
         service_requests = service_requests.filter(assigned_to_id=assigned_user_id)
     
-    service_requests = service_requests.order_by('-id')
+    service_requests = service_requests.order_by('-id').distinct()
 
+    # Get all stations for filter options
+    stations = Station.objects.all().order_by('order')
+    
     filter_options = [
         {'key': 'all', 'label': 'كل الطلبات', 'icon': 'list'},
-        {'key': 'pending', 'label': 'طلبات في الانتظار', 'icon': 'hourglass-half'},
-        {'key': 'under_review', 'label': 'طلبات قيد المراجعة', 'icon': 'eye'},
+    ]
+    
+    # Add station-based filters
+    for station in stations:
+        filter_options.append({
+            'key': station.name.lower().replace(' ', '_'),
+            'label': station.name_ar,
+            'icon': 'circle'
+        })
+    
+    filter_options.extend([
         {'key': 'supplied', 'label': 'طلبات مشتريات موردة', 'icon': 'check'},
         {'key': 'assigned_to_me', 'label': 'طلبات مسندة إليّ', 'icon': 'user-check'},
-    ]
+    ])
 
     assigned_users = User.objects.filter(
         assigned_to__service_provider__in=service_providers
@@ -186,41 +206,87 @@ def requests_to_me(request):
 
     context = {
         'service_requests': service_requests,
-        'filter': filter_type,  # pass the current filter to the template if needed for active styling
+        'filter': filter_type,
         'filter_options': filter_options,
         'assigned_users': assigned_users,
         'assigned_user_id': assigned_user_id,
+        'stations': stations,
     }
     return render(request, 'read/requests_to_me.html', context)
 
 
+# ============================================================================
+# SERVICE REQUEST DETAILS
+# ============================================================================
 
 def request_detail_sm(request, id):
     service_request = ServiceRequest.objects.get(id=id)
     service_request_logs = ServiceRequestLog.objects.filter(service_request=service_request)
     reports = Report.objects.filter(service_request=service_request)
     completion_reports = CompletionReport.objects.filter(service_request=service_request)
+    
+    # Get next and previous stations
+    next_station = service_request.get_next_station()
+    previous_station = service_request.get_previous_station()
+    
+    # Get all stations in pipeline for jump capability
+    pipeline_stations = service_request.pipeline.get_ordered_stations() if service_request.pipeline else []
+    
     context = {
         'service_request': service_request,
         'service_request_logs': service_request_logs,
         'reports': reports,
-        'completion_reports': completion_reports
+        'completion_reports': completion_reports,
+        'next_station': next_station,
+        'previous_station': previous_station,
+        'pipeline_stations': pipeline_stations,
+        'progress': service_request.get_pipeline_progress(),
     }
     return render(request, 'read/request_detail_sm.html', context)
+
 
 def request_detail(request, id):
     service_request = ServiceRequest.objects.get(id=id)
     service_request_logs = ServiceRequestLog.objects.filter(service_request=service_request)
     reports = Report.objects.filter(service_request=service_request)
     completion_reports = CompletionReport.objects.filter(service_request=service_request)
+    
+    # Get next and previous stations (only if pipeline exists)
+    next_station = service_request.get_next_station() if service_request.pipeline else None
+    previous_station = service_request.get_previous_station() if service_request.pipeline else None
+    
+    # Check if user can access next station
+    can_move_next = False
+    if next_station:
+        can_move_next = can_user_access_station(request.user, next_station)
+    
+    # Get all stations in pipeline for manual selection
+    pipeline_stations = service_request.pipeline.get_ordered_stations() if service_request.pipeline else []
+    
+    # Filter stations user can access
+    accessible_stations = [
+        s for s in pipeline_stations 
+        if can_user_access_station(request.user, s)
+    ]
+    
+    # Get available pipelines for assignment
+    available_pipelines = Pipeline.objects.filter(is_active=True)
+    
     context = {
         'service_request': service_request,
         'service_request_logs': service_request_logs,
         'reports': reports,
-        'completion_reports': completion_reports
+        'completion_reports': completion_reports,
+        'next_station': next_station,
+        'previous_station': previous_station,
+        'pipeline_stations': pipeline_stations,
+        'accessible_stations': accessible_stations,
+        'can_move_next': can_move_next,
+        'progress': service_request.get_pipeline_progress() if service_request.pipeline else 0,
+        'is_completed': service_request.is_completed() if service_request.pipeline else False,
+        'available_pipelines': available_pipelines,
     }
     return render(request, 'read/request_detail.html', context)
-
 
 
 def assign_to_user(request, id):
@@ -230,23 +296,30 @@ def assign_to_user(request, id):
         user = User.objects.get(id=user_id)
         service_request.assigned_to = user
         service_request.save()
-        # log
+        
+        # Log the assignment
         ServiceRequestLog.objects.create(
             service_request=service_request,
+            log_type='assignment',
             comment=f'تم تعيين الطلب الى المستخدم {user.username}',
             created_by=request.user
         )
+        
         user_profile = UserProfile.objects.filter(user=user).first()
-        link_to_order  = f"بمكنك الدخول عبد الراب.التالي: https://net.sportainmentclub.com/request_detail/{id}"
-        send_message(user_profile.phone, f'تم تعيين الطلب اليك :{service_request.title} \n {link_to_order}')
+        if user_profile:
+            link_to_order = f"بمكنك الدخول عبر الرابط التالي: https://net.sportainmentclub.com/request_detail/{id}"
+            send_message(user_profile.phone, f'تم تعيين الطلب اليك: {service_request.title}\n{link_to_order}')
+        
         messages.success(request, f'تم تعيين الطلب الى المستخدم {user.username}')
         return redirect('request_detail', id=id)
+    
     users = User.objects.all()
     context = {
         'service_request': service_request,
         'users': users
     }
     return render(request, 'write/assign_to_user.html', context)
+
 
 def print_request(request, id):
     service_request = ServiceRequest.objects.get(id=id)
@@ -263,459 +336,139 @@ def print_request(request, id):
     return render(request, 'read/print_request.html', context)
 
 
-def create_report(request, id):
+# ============================================================================
+# STATION TRANSITIONS
+# ============================================================================
+
+def move_to_next_station_view(request, id):
+    """Move service request to next station in pipeline"""
+    service_request = ServiceRequest.objects.get(id=id)
+    
     if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        reports = Report.objects.filter(service_request=service_request)
-        if not reports:
-            report_title = request.POST.get('report_title')
-            report_description = request.POST.get('report_description')
-            purchase_request_refrence = request.POST.get('purchase_request_refrence')
-            inventory_order_refrence = request.POST.get('inventory_order_refrence')
-            if report_title and report_description:
-                
-                report = Report.objects.create(
-                    service_request=service_request,
-                    title=report_title,
-                    description=report_description,
-                    created_by=request.user
-
-                )
-                # log
-                ServiceRequestLog.objects.create(
-                    service_request=service_request,
-                    comment='تم إنشاء تقرير جديد',
-                    created_by=request.user
-                )
-                messages.success(request, 'تم إنشاء تقرير بنجاح')
-
-            if purchase_request_refrence:
-                PurchaseOrder.objects.create(
-                    report=report,
-                    refrence_number=purchase_request_refrence,
-                    created_by=request.user
-                )
-                report.needs_outsourcing = True
-                # log
-                ServiceRequestLog.objects.create(
-                    service_request=service_request,
-                    comment='تم إنشاء طلب شراء ',
-                    created_by=request.user
-                )
-                messages.success(request, 'تم إنشاء طلب شراء بنجاح')
-
-            if inventory_order_refrence:
-                InventoryOrder.objects.create(
-                    report=report,
-                    refrence_number=inventory_order_refrence,
-                    created_by=request.user
-
-                )
-
-                report.needs_outsourcing = True
-                # log
-                ServiceRequestLog.objects.create(
-                    service_request=service_request,
-                    comment='تم إنشاء طلب مخزني',
-                    created_by=request.user
-                )
-                messages.success(request, 'تم إنشاء طلب مخزني بنجاح')
+        comment = request.POST.get('comment', '')
+        
+        success, message = service_request.move_to_next_station(
+            user=request.user,
+            comment=comment
+        )
+        
+        if success:
+            messages.success(request, message)
             
-            service_request.status = 'in_progress'
-            service_request.save()
-            return redirect('request_detail', id=id)
+            # Send notifications if moving to final station
+            if service_request.is_completed():
+                user_to_alert_phone = service_request.created_by.profile.phone
+                msg = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اكمال طلبك بنجاح\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
+                send_message(user_to_alert_phone, msg)
         else:
-            messages.error(request, 'تم إنشاء تقرير بالفعل')
-            return redirect('request_detail', id=id)
-    
-    
-def create_completion_report(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report_details = request.POST.get('report_details')
-        mark_as_completed = request.POST.get('mark_as_completed')
-        reports = Report.objects.filter(service_request=service_request)
-        if not reports:
-            report = Report.objects.create(
-                service_request=service_request,
-                title='تقرير إنجاز',
-                created_by=request.user
-            )    
-            CompletionReport.objects.create(
-                service_request=service_request,
-                title='تقرير إنجاز',
-                description=report_details,
-                created_by=request.user
-            )
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=service_request,
-                comment='تم إنشاء تقرير إنجاز',
-                created_by=request.user
-            )
-            user_to_alart_phone = service_request.created_by.profile.phone
-            # message with request details
-            message = f'*نظام صيانة النادي الترفيهي الرياضي* \nتم اكمال طلبك بنجاح \n عنوان طلبك كان: {service_request.title} \n تفاصيل الطلب: {service_request.description}'
-            # send message
-            send_message(user_to_alart_phone, message)
-            service_request.status = 'under_review'
-            service_request.save()
-            messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
-            return redirect('request_detail', id=id)
-        else:
-            messages.error(request, 'تم إنشاء تقرير إنجاز بالفعل')
-            return redirect('request_detail', id=id)
-
-
-def create_report_out_source(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report_details = request.POST.get('report_details')
-        reports = Report.objects.filter(service_request=service_request)
-        if not reports:
-            report = Report.objects.create(
-                service_request=service_request,
-                title='تقرير احتياج خدمة خارجية',
-                created_by=request.user,
-                description = report_details
-            )    
-
-            ServiceRequestLog.objects.create(
-                service_request=service_request,
-                comment='تم انشاء تقرير احتياج خدمة خارجية',
-                created_by=request.user
-            )
-            service_request.status = 'in_progress'
-            service_request.save()
-            messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
-            return redirect('request_detail', id=id)
-        else:
-            messages.error(request, 'تم إنشاء تقرير إنجاز بالفعل')
-            return redirect('request_detail', id=id)
+            messages.error(request, message)
         
+        return redirect('request_detail', id=id)
+    
+    context = {
+        'service_request': service_request,
+        'next_station': service_request.get_next_station(),
+    }
+    return render(request, 'write/move_to_next_station.html', context)
 
-def create_completion_report_out_source(request,id):
+
+def move_to_station_view(request, id, station_id):
+    """Move service request to a specific station"""
+    service_request = ServiceRequest.objects.get(id=id)
+    station = Station.objects.get(id=station_id)
+    
+    # Check if user can access this station
+    if not can_user_access_station(request.user, station):
+        messages.error(request, 'ليس لديك صلاحية للانتقال إلى هذه المحطة')
+        return redirect('request_detail', id=id)
+    
     if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        reports = Report.objects.filter(service_request=service_request)
-        report_details = request.POST.get('report_details')
-        if not reports:
-            messages.error(request,"حصل خطاء ماء")
-            return redirect('request_detail', id=id)
+        comment = request.POST.get('comment', '')
         
-        CompletionReport.objects.create(
-                service_request=service_request,
-                title='تقرير إنجاز لعمل خارجي',
-                description=report_details,
-                created_by=request.user
-            )
-        # log
-        ServiceRequestLog.objects.create(
-            service_request=service_request,
-            comment='تم إنشاء تقرير إنجاز',
-            created_by=request.user
+        success, message = service_request.move_to_station(
+            station=station,
+            user=request.user,
+            comment=comment
         )
-        service_request.status = 'in_progress'
-        service_request.save()
-        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
-        return redirect('request_detail', id=id)
-    
-
-def create_purchase_order(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report = Report.objects.filter(service_request=service_request).first()
-        purchase_request_refrence = request.POST.get('purchase_request_refrence')
-        if report:
-            PurchaseOrder.objects.create(
-                report=report,
-                refrence_number=purchase_request_refrence,
-                created_by=request.user
-            )
-            report.needs_outsourcing = True
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=service_request,
-                comment='تم إنشاء طلب شراء ',
-                created_by=request.user
-            )
-            messages.success(request, 'تم إنشاء طلب شراء بنجاح')
-            return redirect('request_detail', id=id)
-        else:
-            messages.error(request, 'التقرير غير موجود')
-            return redirect('request_detail', id=id)
         
-
-def create_inventory_order(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report = Report.objects.filter(service_request=service_request).first()
-        inventory_order_refrence = request.POST.get('inventory_order_refrence')
-        if report:
-            InventoryOrder.objects.create(
-                report=report,
-                refrence_number=inventory_order_refrence,
-                created_by=request.user
-            )
-            report.needs_outsourcing = True
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=service_request,
-                comment='تم إنشاء طلب مخزني',
-                created_by=request.user
-            )
-            messages.success(request, 'تم إنشاء طلب مخزني بنجاح')
-            return redirect('request_detail', id=id)
+        if success:
+            messages.success(request, message)
         else:
-            messages.error(request, 'التقرير غير موجود')
-            return redirect('request_detail', id=id)
+            messages.error(request, message)
         
-
-
-
-
-
-def edit_completion_report(request,id):
-    completion_report = CompletionReport.objects.get(id=id) 
-    form = CompletionReportForm(instance=completion_report)
-    if request.method == 'POST':
-        form = CompletionReportForm(request.POST, instance=completion_report)
-        if form.is_valid():
-            form.save()
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=completion_report.service_request,
-                comment='تم تعديل تقرير إنجاز',
-                created_by=request.user
-            )
-            messages.success(request, 'تم تعديل تقرير إنجاز بنجاح')
-            return redirect('request_detail', id=completion_report.service_request.id)
-    context = {
-        'form': form
-    }
-    return render(request, 'write/edit_completion_report.html', context)
-
-
-def purchase_order_mark_as_approved(request, id):
-    
-    purchase_order = PurchaseOrder.objects.get(id=id)
-    purchase_order.status = 'approved'
-    purchase_order.save()
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=purchase_order.report.service_request,
-        comment='تم تعديل حالة طلب الشراء الى جاهز للشراء',
-        created_by=request.user
-    )
-    messages.success(request, 'تم تعديل حالة طلب الشراء الى جاهز للشراء')
-    return redirect('request_detail', id=purchase_order.report.service_request.id)
-
-
-def purchase_order_mark_as_pending(request, id):
-    purchase_order = PurchaseOrder.objects.get(id=id)
-    purchase_order.status = 'approved'
-    purchase_order.save()
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=purchase_order.report.service_request,
-        comment='تم تعديل حالة طلب الشراء الى قيد الاعتماد',
-        created_by=request.user
-    )
-
-    messages.success(request, 'تم تعديل حالة طلب الشراء الى قيد الاعتماد')
-    return redirect('request_detail', id=purchase_order.report.service_request.id)
-
-
-def purchase_order_mark_as_used(request, id):
-    purchase_order = PurchaseOrder.objects.get(id=id)
-    purchase_order.status = 'used'
-    purchase_order.save()
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=purchase_order.report.service_request,
-        comment='تم تعديل حالة طلب الشراء الى تم الاستخدام',
-        created_by=request.user
-    )
-    messages.success(request, 'تم تعديل حالة طلب الشراء الى تم الاستخدام')
-    return redirect('request_detail', id=purchase_order.report.service_request.id)
-
-
-
-
-def inventory_order_mark_as_approved(request, id):
-    inventory_order = InventoryOrder.objects.get(id=id)
-    inventory_order.status = 'used'
-    inventory_order.save()
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=inventory_order.report.service_request,
-        comment='تم تعديل حالة طلب مخزني الى تم الاستخدام',
-        created_by=request.user
-    )
-    messages.success(request, 'تم تعديل حالة طلب مخزني الى تم الاستخدام')
-    return redirect('request_detail', id=inventory_order.report.service_request.id)
-
-
-def inventory_order_mark_as_pending(request, id):
-    inventory_order = InventoryOrder.objects.get(id=id)
-    inventory_order.status = 'pending'
-    inventory_order.save()
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=inventory_order.report.service_request,
-        comment='تم تعديل حالة طلب مخزني الى قيد العمل',
-        created_by=request.user
-    )
-    messages.success(request, 'تم تعديل حالة طلب مخزني الى قيد العمل')
-    return redirect('request_detail', id=inventory_order.report.service_request.id)\
-    
-
-
-
-def edit_purchase_order(request, id):
-    purchase_order = PurchaseOrder.objects.get(id=id)
-    form = PurchaseOrderForm(instance=purchase_order)
-    if request.method == 'POST':
-        form = PurchaseOrderForm(request.POST, instance=purchase_order)
-        if form.is_valid():
-            form.save()
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=purchase_order.report.service_request,
-                comment='تم تعديل طلب الشراء',
-                created_by=request.user
-            )
-            messages.success(request, 'تم تعديل طلب الشراء بنجاح')
-            return redirect('request_detail', id=purchase_order.report.service_request.id)
-    context = {
-        'form': form
-    }
-    return render(request, 'write/edit_purchase_order.html', context)
-
-
-
-def edit_inventory_order(request, id):
-    inventory_order = InventoryOrder.objects.get(id=id)
-    form = InventoryOrderForm(instance=inventory_order)
-    if request.method == 'POST':
-        form = InventoryOrderForm(request.POST, instance=inventory_order)
-        if form.is_valid():
-            form.save()
-            # log
-            ServiceRequestLog.objects.create(
-                service_request=inventory_order.report.service_request,
-                comment='تم تعديل طلب مخزني',
-                created_by=request.user
-            )
-            messages.success(request, 'تم تعديل طلب مخزني بنجاح')
-            return redirect('request_detail', id=inventory_order.report.service_request.id)
-    context = {
-        'form': form
-    }
-    return render(request, 'write/edit_inventory_order.html', context)
-
-
-
-def mark_as_under_review(request, id):
-    service_request = ServiceRequest.objects.get(id=id)
-    user_to_alart_phone = service_request.created_by.profile.phone
-    # message with request details
-    message = f'*نظام صيانة النادي الترفيهي الرياضي* \nتم اكمال طلبك بنجاح \n عنوان طلبك كان: {service_request.title} \n تفاصيل الطلب: {service_request.description}'
-    # send message
-    report = Report.objects.filter(service_request=service_request).first()
-    completion_report = CompletionReport.objects.filter(service_request=service_request).first()
-
-    if service_request.status == 'in_progress' and report and completion_report:
-        service_request.status = 'under_review'
-        service_request.save()
-        send_message(user_to_alart_phone, message)
-
-
-        purchase_order = PurchaseOrder.objects.filter(report=report).first()
-        inventory_order = InventoryOrder.objects.filter(report=report).first()
-        if purchase_order:
-            purchase_order.status = 'used'
-            purchase_order.save()
-        if inventory_order:
-            inventory_order.status = 'used'
-            inventory_order.save()
-        # log
-        ServiceRequestLog.objects.create(
-            service_request=service_request,
-            comment='تم تعديل حالة الطلب الى قيد المراجعة',
-            created_by=request.user
-        )
-        messages.success(request, 'تم تعديل حالة الطلب الى قيد المراجعة')
         return redirect('request_detail', id=id)
-    else:
-        messages.error(request, 'حالة الطلب لا تسمح بالمراجعة')
-        return redirect('request_detail', id=id)
+    
+    context = {
+        'service_request': service_request,
+        'target_station': station,
+    }
+    return render(request, 'write/move_to_station.html', context)
 
 
+# ============================================================================
+# PIPELINE ASSIGNMENT
+# ============================================================================
 
-def mark_as_in_progress(request, id):
+def assign_pipeline(request, id):
+    """Assign a pipeline to a service request"""
     service_request = ServiceRequest.objects.get(id=id)
-    service_provider = service_request.service_provider
+    
+    # Only allow if no pipeline assigned yet
+    if service_request.pipeline:
+        messages.warning(request, 'تم تعيين مسار عمل بالفعل لهذا الطلب')
+        return redirect('request_detail', id=id)
+    
     if request.method == 'POST':
-        form = ServiceRequestLogForm(request.POST)
-        if form.is_valid():
-            form.instance.service_request = service_request
-            form.instance.created_by = request.user
-            form.instance.comment = 'تم اعادة حالة الطلب الى قيد العمل: ' + form.instance.comment
-            service_request.status = 'in_progress'
-            message = f'*نظام صيانة النادي الترفيهي الرياضي* \nتم اعادة الطلب الي حيث وانه هناك مشكلة \n عنوان طلبك كان: {service_request.title} \n تفاصيل الطلب: {service_request.description}\n تفاصيل المشكلة: {form.instance.comment}'
-
-            for user in service_provider.manager.all():
-                user_to_alart_phone = user.profile.phone
-                # send message
-                send_message(user_to_alart_phone, message)
-                
-
+        pipeline_id = request.POST.get('pipeline')
+        
+        if pipeline_id:
+            pipeline = Pipeline.objects.get(id=pipeline_id)
+            initial_station = pipeline.get_initial_station()
+            
+            if not initial_station:
+                messages.error(request, 'خطأ: المسار المحدد لا يحتوي على محطة ابتدائية')
+                return redirect('request_detail', id=id)
+            
+            # Assign pipeline and initial station
+            service_request.pipeline = pipeline
+            service_request.current_station = initial_station
             service_request.save()
-            form.save()            
-            messages.success(request, 'تم اعادة حالة الطلب الى قيد العمل')
+            
+            # Log the assignment
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                to_station=initial_station,
+                log_type='station_change',
+                comment=f'تم تعيين مسار العمل: {pipeline.name_ar} وبدء المحطة: {initial_station.name_ar}',
+                created_by=request.user
+            )
+            
+            messages.success(request, f'تم تعيين مسار العمل: {pipeline.name_ar} بنجاح')
             return redirect('request_detail', id=id)
+        else:
+            messages.error(request, 'الرجاء اختيار مسار عمل')
+            return redirect('request_detail', id=id)
+    
+    # GET request - show pipeline selection
+    pipelines = Pipeline.objects.filter(is_active=True)
     context = {
-        'form': ServiceRequestLogForm()
+        'service_request': service_request,
+        'pipelines': pipelines,
     }
-    return render(request, 'write/mark_as_in_progress.html', context)
-    
-
-def mark_as_complete(request, id):
-    service_request = ServiceRequest.objects.get(id=id)
-    service_provider = service_request.service_provider
-    
-    service_request.status = 'completed'
-    service_request.save()
-    message = f'*نظام صيانة النادي الترفيهي الرياضي* \nتم استلام العمل من قبل قسم : {service_request.section.name} \n عنوان الطلب كان: {service_request.title} \n تفاصيل الطلب: {service_request.description}'
-
-    for user in service_provider.manager.all():
-        user_to_alart_phone = user.profile.phone
-        # send message
-        send_message(user_to_alart_phone, message)
-    # log
-    ServiceRequestLog.objects.create(
-        service_request=service_request,
-        comment='تم اكمال الطلب',
-        created_by=request.user
-    )
-    messages.success(request, 'تم اكمال الطلب')
-    return redirect(request.GET.get('next', 'home'))
+    return render(request, 'write/assign_pipeline.html', context)
 
 
-
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from django.db.models import Q
-from .models import Section, ServiceProvider, ServiceRequest, ServiceRequestLog
+# ============================================================================
+# CREATE SERVICE REQUEST
+# ============================================================================
 
 def create_service_request(request):
     sections = Section.objects.filter(manager=request.user)
     service_providers = ServiceProvider.objects.all()
 
     if request.method == 'POST':
-        title = request.POST.get('title').strip()
-        description = request.POST.get('description').strip()
+        title = request.POST.get('title', '').strip()
+        description = request.POST.get('description', '').strip()
         section_id = request.POST.get('section')
         service_provider_id = request.POST.get('service_provider')
 
@@ -733,31 +486,36 @@ def create_service_request(request):
                 messages.warning(request, 'هذا الطلب موجود بالفعل')
                 return redirect('create_service_request')
 
-            # Create new request
+            # Create new request WITHOUT pipeline (will be assigned later)
             service_request = ServiceRequest.objects.create(
                 title=title,
                 description=description,
                 section_id=section_id,
                 service_provider_id=service_provider_id,
+                pipeline=None,  # No pipeline yet
+                current_station=None,  # No station yet
                 created_by=request.user,
                 updated_by=request.user
             )
+            
             service_provider = service_request.service_provider
 
-            message = f'*نظام صيانة النادي الترفيهي الرياضي* \nلديك طلب صيانة: {service_request.section.name} \n عنوان الطلب كان: {service_request.title} \n تفاصيل الطلب: {service_request.description}'
+            message = f'*نظام صيانة النادي الترفيهي الرياضي*\nلديك طلب صيانة: {service_request.section.name}\nعنوان الطلب كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
 
             for user in service_provider.manager.all():
-                user_to_alart_phone = user.profile.phone
-                # send message
-                send_message(user_to_alart_phone, message)
+                user_profile = user.profile
+                if user_profile:
+                    send_message(user_profile.phone, message)
+            
             # Log creation
             ServiceRequestLog.objects.create(
                 service_request=service_request,
-                comment='تم إنشاء طلب جديد',
+                log_type='update',
+                comment='تم إنشاء طلب جديد - في انتظار تحديد مسار العمل',
                 created_by=request.user
             )
 
-            messages.success(request, 'تم إنشاء الطلب بنجاح')
+            messages.success(request, 'تم إنشاء الطلب بنجاح. يرجى تحديد مسار العمل.')
             return redirect('request_detail_sm', id=service_request.id)
         else:
             messages.error(request, 'الرجاء ملء جميع الحقول')
@@ -765,40 +523,546 @@ def create_service_request(request):
 
     context = {
         'sections': sections,
-        'service_providers': service_providers
+        'service_providers': service_providers,
     }
     return render(request, 'write/create_service_request.html', context)
 
 
+# ============================================================================
+# REPORT CREATION
+# ============================================================================
+
+def create_report(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        reports = Report.objects.filter(service_request=service_request)
+        
+        if not reports:
+            report_title = request.POST.get('report_title')
+            report_description = request.POST.get('report_description')
+            purchase_request_refrence = request.POST.get('purchase_request_refrence')
+            inventory_order_refrence = request.POST.get('inventory_order_refrence')
+            
+            if report_title and report_description:
+                report = Report.objects.create(
+                    service_request=service_request,
+                    title=report_title,
+                    description=report_description,
+                    created_by=request.user
+                )
+                
+                # Log report creation
+                ServiceRequestLog.objects.create(
+                    service_request=service_request,
+                    log_type='update',
+                    comment='تم إنشاء تقرير جديد',
+                    created_by=request.user
+                )
+                messages.success(request, 'تم إنشاء تقرير بنجاح')
+
+            if purchase_request_refrence:
+                PurchaseOrder.objects.create(
+                    report=report,
+                    refrence_number=purchase_request_refrence,
+                    created_by=request.user
+                )
+                report.needs_outsourcing = True
+                report.save()
+                
+                ServiceRequestLog.objects.create(
+                    service_request=service_request,
+                    log_type='update',
+                    comment='تم إنشاء طلب شراء',
+                    created_by=request.user
+                )
+                messages.success(request, 'تم إنشاء طلب شراء بنجاح')
+
+            if inventory_order_refrence:
+                InventoryOrder.objects.create(
+                    report=report,
+                    refrence_number=inventory_order_refrence,
+                    created_by=request.user
+                )
+                report.needs_items = True
+                report.save()
+                
+                ServiceRequestLog.objects.create(
+                    service_request=service_request,
+                    log_type='update',
+                    comment='تم إنشاء طلب مخزني',
+                    created_by=request.user
+                )
+                messages.success(request, 'تم إنشاء طلب مخزني بنجاح')
+            
+            # Move to "In Progress" station if exists
+            in_progress = get_station_by_name('In Progress')
+            if in_progress and service_request.current_station != in_progress:
+                service_request.move_to_station(
+                    station=in_progress,
+                    user=request.user,
+                    comment='تم إنشاء التقرير - بدء العمل'
+                )
+            
+            return redirect('request_detail', id=id)
+        else:
+            messages.error(request, 'تم إنشاء تقرير بالفعل')
+            return redirect('request_detail', id=id)
 
 
+def create_completion_report(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        report_details = request.POST.get('report_details')
+        reports = Report.objects.filter(service_request=service_request)
+        
+        if not reports:
+            report = Report.objects.create(
+                service_request=service_request,
+                title='تقرير إنجاز',
+                created_by=request.user
+            )    
+        
+        CompletionReport.objects.create(
+            service_request=service_request,
+            title='تقرير إنجاز',
+            description=report_details,
+            created_by=request.user
+        )
+        
+        # Log completion report
+        ServiceRequestLog.objects.create(
+            service_request=service_request,
+            log_type='update',
+            comment='تم إنشاء تقرير إنجاز',
+            created_by=request.user
+        )
+        
+        # Move to "Under Review" station if exists
+        under_review = get_station_by_name('Under Review')
+        if under_review and service_request.current_station != under_review:
+            success, msg = service_request.move_to_station(
+                station=under_review,
+                user=request.user,
+                comment='تم إنشاء تقرير الإنجاز - جاهز للمراجعة'
+            )
+            
+            if success:
+                user_to_alert_phone = service_request.created_by.profile.phone
+                message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اكمال طلبك بنجاح\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
+                send_message(user_to_alert_phone, message)
+        
+        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
+        return redirect('request_detail', id=id)
+
+
+def create_report_out_source(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        report_details = request.POST.get('report_details')
+        reports = Report.objects.filter(service_request=service_request)
+        
+        if not reports:
+            report = Report.objects.create(
+                service_request=service_request,
+                title='تقرير احتياج خدمة خارجية',
+                created_by=request.user,
+                description=report_details
+            )    
+
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                log_type='update',
+                comment='تم انشاء تقرير احتياج خدمة خارجية',
+                created_by=request.user
+            )
+            
+            # Move to "In Progress" if not already there
+            in_progress = get_station_by_name('In Progress')
+            if in_progress and service_request.current_station != in_progress:
+                service_request.move_to_station(
+                    station=in_progress,
+                    user=request.user,
+                    comment='احتياج خدمة خارجية - قيد العمل'
+                )
+            
+            messages.success(request, 'تم إنشاء تقرير بنجاح')
+            return redirect('request_detail', id=id)
+        else:
+            messages.error(request, 'تم إنشاء تقرير بالفعل')
+            return redirect('request_detail', id=id)
+
+
+def create_completion_report_out_source(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        reports = Report.objects.filter(service_request=service_request)
+        report_details = request.POST.get('report_details')
+        
+        if not reports:
+            messages.error(request, "حصل خطاء ما")
+            return redirect('request_detail', id=id)
+        
+        CompletionReport.objects.create(
+            service_request=service_request,
+            title='تقرير إنجاز لعمل خارجي',
+            description=report_details,
+            created_by=request.user
+        )
+        
+        ServiceRequestLog.objects.create(
+            service_request=service_request,
+            log_type='update',
+            comment='تم إنشاء تقرير إنجاز لعمل خارجي',
+            created_by=request.user
+        )
+        
+        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
+        return redirect('request_detail', id=id)
+
+
+def create_purchase_order(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        report = Report.objects.filter(service_request=service_request).first()
+        purchase_request_refrence = request.POST.get('purchase_request_refrence')
+        
+        if report:
+            PurchaseOrder.objects.create(
+                report=report,
+                refrence_number=purchase_request_refrence,
+                created_by=request.user
+            )
+            report.needs_outsourcing = True
+            report.save()
+            
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                log_type='update',
+                comment='تم إنشاء طلب شراء',
+                created_by=request.user
+            )
+            messages.success(request, 'تم إنشاء طلب شراء بنجاح')
+            return redirect('request_detail', id=id)
+        else:
+            messages.error(request, 'التقرير غير موجود')
+            return redirect('request_detail', id=id)
+
+
+def create_inventory_order(request, id):
+    if request.method == 'POST':
+        service_request = ServiceRequest.objects.get(id=id)
+        report = Report.objects.filter(service_request=service_request).first()
+        inventory_order_refrence = request.POST.get('inventory_order_refrence')
+        
+        if report:
+            InventoryOrder.objects.create(
+                report=report,
+                refrence_number=inventory_order_refrence,
+                created_by=request.user
+            )
+            report.needs_items = True
+            report.save()
+            
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                log_type='update',
+                comment='تم إنشاء طلب مخزني',
+                created_by=request.user
+            )
+            messages.success(request, 'تم إنشاء طلب مخزني بنجاح')
+            return redirect('request_detail', id=id)
+        else:
+            messages.error(request, 'التقرير غير موجود')
+            return redirect('request_detail', id=id)
+
+
+# ============================================================================
+# EDIT REPORTS & ORDERS
+# ============================================================================
+
+def edit_completion_report(request, id):
+    completion_report = CompletionReport.objects.get(id=id) 
+    form = CompletionReportForm(instance=completion_report)
+    
+    if request.method == 'POST':
+        form = CompletionReportForm(request.POST, instance=completion_report)
+        if form.is_valid():
+            form.save()
+            
+            ServiceRequestLog.objects.create(
+                service_request=completion_report.service_request,
+                log_type='update',
+                comment='تم تعديل تقرير إنجاز',
+                created_by=request.user
+            )
+            messages.success(request, 'تم تعديل تقرير إنجاز بنجاح')
+            return redirect('request_detail', id=completion_report.service_request.id)
+    
+    context = {'form': form}
+    return render(request, 'write/edit_completion_report.html', context)
+
+
+def purchase_order_mark_as_approved(request, id):
+    purchase_order = PurchaseOrder.objects.get(id=id)
+    purchase_order.status = 'approved'
+    purchase_order.save()
+    
+    ServiceRequestLog.objects.create(
+        service_request=purchase_order.report.service_request,
+        log_type='update',
+        comment='تم تعديل حالة طلب الشراء الى جاهز للشراء',
+        created_by=request.user
+    )
+    messages.success(request, 'تم تعديل حالة طلب الشراء الى جاهز للشراء')
+    return redirect('request_detail', id=purchase_order.report.service_request.id)
+
+
+def purchase_order_mark_as_pending(request, id):
+    purchase_order = PurchaseOrder.objects.get(id=id)
+    purchase_order.status = 'approved'
+    purchase_order.save()
+    
+    ServiceRequestLog.objects.create(
+        service_request=purchase_order.report.service_request,
+        log_type='update',
+        comment='تم تعديل حالة طلب الشراء الى قيد الاعتماد',
+        created_by=request.user
+    )
+    messages.success(request, 'تم تعديل حالة طلب الشراء الى قيد الاعتماد')
+    return redirect('request_detail', id=purchase_order.report.service_request.id)
+
+
+def purchase_order_mark_as_used(request, id):
+    purchase_order = PurchaseOrder.objects.get(id=id)
+    purchase_order.status = 'used'
+    purchase_order.save()
+    
+    ServiceRequestLog.objects.create(
+        service_request=purchase_order.report.service_request,
+        log_type='update',
+        comment='تم تعديل حالة طلب الشراء الى تم الاستخدام',
+        created_by=request.user
+    )
+    messages.success(request, 'تم تعديل حالة طلب الشراء الى تم الاستخدام')
+    return redirect('request_detail', id=purchase_order.report.service_request.id)
+
+
+def inventory_order_mark_as_approved(request, id):
+    inventory_order = InventoryOrder.objects.get(id=id)
+    inventory_order.status = 'used'
+    inventory_order.save()
+    
+    ServiceRequestLog.objects.create(
+        service_request=inventory_order.report.service_request,
+        log_type='update',
+        comment='تم تعديل حالة طلب مخزني الى تم الاستخدام',
+        created_by=request.user
+    )
+    messages.success(request, 'تم تعديل حالة طلب مخزني الى تم الاستخدام')
+    return redirect('request_detail', id=inventory_order.report.service_request.id)
+
+
+def inventory_order_mark_as_pending(request, id):
+    inventory_order = InventoryOrder.objects.get(id=id)
+    inventory_order.status = 'pending'
+    inventory_order.save()
+    
+    ServiceRequestLog.objects.create(
+        service_request=inventory_order.report.service_request,
+        log_type='update',
+        comment='تم تعديل حالة طلب مخزني الى قيد العمل',
+        created_by=request.user
+    )
+    messages.success(request, 'تم تعديل حالة طلب مخزني الى قيد العمل')
+    return redirect('request_detail', id=inventory_order.report.service_request.id)
+
+
+def edit_purchase_order(request, id):
+    purchase_order = PurchaseOrder.objects.get(id=id)
+    form = PurchaseOrderForm(instance=purchase_order)
+    
+    if request.method == 'POST':
+        form = PurchaseOrderForm(request.POST, instance=purchase_order)
+        if form.is_valid():
+            form.save()
+            
+            ServiceRequestLog.objects.create(
+                service_request=purchase_order.report.service_request,
+                log_type='update',
+                comment='تم تعديل طلب الشراء',
+                created_by=request.user
+            )
+            messages.success(request, 'تم تعديل طلب الشراء بنجاح')
+            return redirect('request_detail', id=purchase_order.report.service_request.id)
+    
+    context = {'form': form}
+    return render(request, 'write/edit_purchase_order.html', context)
+
+
+def edit_inventory_order(request, id):
+    inventory_order = InventoryOrder.objects.get(id=id)
+    form = InventoryOrderForm(instance=inventory_order)
+    
+    if request.method == 'POST':
+        form = InventoryOrderForm(request.POST, instance=inventory_order)
+        if form.is_valid():
+            form.save()
+            
+            ServiceRequestLog.objects.create(
+                service_request=inventory_order.report.service_request,
+                log_type='update',
+                comment='تم تعديل طلب مخزني',
+                created_by=request.user
+            )
+            messages.success(request, 'تم تعديل طلب مخزني بنجاح')
+            return redirect('request_detail', id=inventory_order.report.service_request.id)
+    
+    context = {'form': form}
+    return render(request, 'write/edit_inventory_order.html', context)
+
+
+# ============================================================================
+# LEGACY STATUS TRANSITION VIEWS (Now using stations)
+# ============================================================================
+
+def mark_as_under_review(request, id):
+    """Legacy view - now moves to 'Under Review' station"""
+    service_request = ServiceRequest.objects.get(id=id)
+    report = Report.objects.filter(service_request=service_request).first()
+    completion_report = CompletionReport.objects.filter(service_request=service_request).first()
+
+    if report and completion_report:
+        under_review = get_station_by_name('Under Review')
+        
+        if under_review:
+            success, message = service_request.move_to_station(
+                station=under_review,
+                user=request.user,
+                comment='تم نقل الطلب للمراجعة'
+            )
+            
+            if success:
+                # Send notification
+                user_to_alert_phone = service_request.created_by.profile.phone
+                msg = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اكمال طلبك بنجاح\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
+                send_message(user_to_alert_phone, msg)
+                
+                # Mark purchase and inventory orders as used
+                purchase_order = PurchaseOrder.objects.filter(report=report).first()
+                inventory_order = InventoryOrder.objects.filter(report=report).first()
+                if purchase_order:
+                    purchase_order.status = 'used'
+                    purchase_order.save()
+                if inventory_order:
+                    inventory_order.status = 'used'
+                    inventory_order.save()
+                
+                messages.success(request, 'تم تعديل حالة الطلب الى قيد المراجعة')
+            else:
+                messages.error(request, message)
+        else:
+            messages.error(request, 'محطة "قيد المراجعة" غير موجودة')
+    else:
+        messages.error(request, 'حالة الطلب لا تسمح بالمراجعة')
+    
+    return redirect('request_detail', id=id)
+
+
+def mark_as_in_progress(request, id):
+    """Legacy view - now moves back to 'In Progress' station"""
+    service_request = ServiceRequest.objects.get(id=id)
+    service_provider = service_request.service_provider
+    
+    if request.method == 'POST':
+        form = ServiceRequestLogForm(request.POST)
+        if form.is_valid():
+            comment = 'تم اعادة حالة الطلب الى قيد العمل: ' + form.cleaned_data['comment']
+            
+            in_progress = get_station_by_name('In Progress')
+            if in_progress:
+                success, msg = service_request.move_to_station(
+                    station=in_progress,
+                    user=request.user,
+                    comment=comment
+                )
+                
+                if success:
+                    # Send notification to service provider
+                    message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اعادة الطلب الي حيث وان هناك مشكلة\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}\nتفاصيل المشكلة: {comment}'
+                    
+                    for user in service_provider.manager.all():
+                        user_profile = user.profile
+                        if user_profile:
+                            send_message(user_profile.phone, message)
+                    
+                    messages.success(request, 'تم اعادة حالة الطلب الى قيد العمل')
+                else:
+                    messages.error(request, msg)
+            else:
+                messages.error(request, 'محطة "قيد العمل" غير موجودة')
+                
+            return redirect('request_detail', id=id)
+    
+    context = {'form': ServiceRequestLogForm()}
+    return render(request, 'write/mark_as_in_progress.html', context)
+
+
+def mark_as_complete(request, id):
+    """Legacy view - now moves to final/completed station"""
+    service_request = ServiceRequest.objects.get(id=id)
+    service_provider = service_request.service_provider
+    
+    # Try to move to the final station
+    completed = get_station_by_name('Completed')
+    if completed:
+        success, msg = service_request.move_to_station(
+            station=completed,
+            user=request.user,
+            comment='تم اكمال الطلب'
+        )
+        
+        if success:
+            # Send notification
+            message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم استلام العمل من قبل قسم: {service_request.section.name}\nعنوان الطلب كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
+            
+            for user in service_provider.manager.all():
+                user_profile = user.profile
+                if user_profile:
+                    send_message(user_profile.phone, message)
+            
+            messages.success(request, 'تم اكمال الطلب')
+        else:
+            messages.error(request, msg)
+    else:
+        messages.error(request, 'محطة "مكتمل" غير موجودة')
+    
+    return redirect(request.GET.get('next', 'home'))
+
+
+# ============================================================================
+# PURCHASE ORDERS
+# ============================================================================
 
 def purchase_order_list(request):
-    orders = PurchaseOrder.objects.filter(status__in=['approved', 'supplied']).order_by('-created_at')
+    orders = PurchaseOrder.objects.filter(
+        status__in=['approved', 'supplied']
+    ).order_by('-created_at')
     return render(request, 'read/purchase_orders.html', {'orders': orders})
 
 
-from django.http import JsonResponse
-from django.core.serializers import serialize
-from .models import PurchaseOrder
-from django.utils.dateformat import format as date_format
-
 def purchase_order_list_api(request):
     status = request.GET.get('status', '')
-    
     search = request.GET.get('search', '')
+    
     orders = PurchaseOrder.objects.all()
+    
     if status:
-        print(status)
         orders = orders.filter(status__in=status.split(','))
     if search:
-        print(search)
         orders = orders.filter(refrence_number__icontains=search)
     
-    # Build a list of dictionaries with needed fields
     orders_data = []
     for order in orders:
-        # Compute a Bootstrap badge class based on the status.
         if order.status == 'pending':
             badge_class = "bg-warning"
         elif order.status == 'approved':
@@ -810,7 +1074,6 @@ def purchase_order_list_api(request):
         else:
             badge_class = "bg-dark"
             
-            
         orders_data.append({
             'id': order.id,
             'refrence_number': order.refrence_number,
@@ -821,15 +1084,8 @@ def purchase_order_list_api(request):
             'service_request_id': order.report.service_request.id,
         })
     
-    
     return JsonResponse({'orders': orders_data})
 
-
-
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from django.views.decorators.http import require_POST
-from .models import PurchaseOrder
 
 @require_POST
 def update_order_status(request):
@@ -839,15 +1095,14 @@ def update_order_status(request):
     order.status = new_status
     order.save()
 
-    
-
-    # تحديد فئة البادج بناءً على الحالة
     if new_status == 'supplied':
         badge_class = "bg-success"
         service_providers = order.report.service_request.service_provider.manager.all()
         for service_provider in service_providers:
-            message = f'*نظام صيانة النادي الترفيهي الرياضي* \nتم توريد الطلب الخاص بك \n عنوان الطلب كان: {order.report.service_request.title} \n تفاصيل الطلب: {order.report.service_request.description}'
-            send_message(service_provider.profile.phone, message)
+            user_profile = service_provider.profile
+            if user_profile:
+                message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم توريد الطلب الخاص بك\nعنوان الطلب كان: {order.report.service_request.title}\nتفاصيل الطلب: {order.report.service_request.description}'
+                send_message(user_profile.phone, message)
     elif new_status == 'approved':
         badge_class = "bg-warning"
     elif new_status == 'used':
@@ -860,7 +1115,3 @@ def update_order_status(request):
         'status_display': order.get_status_display(),
         'badge_class': badge_class,
     })
-
-
-
-
