@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container my-5" dir="rtl">
+  <div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-6">
+      <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-header bg-primary text-white rounded-top-4 py-3">
+          <h4 class="mb-0">
+            <i class="fas fa-user-check ms-2"></i>
+            تعيين مستخدم للطلب
+          </h4>
+        </div>
+        <div class="card-body bg-light rounded-bottom-4">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <div class="mb-4">
+            <h5 class="text-primary fw-bold"><i class="fas fa-file-alt ms-2"></i>{{ service_request.title }}</h5>
+            <p class="text-muted mb-2">{{ service_request.description }}</p>
+            <div class="row g-2 text-muted small">
+              <div class="col-6"><i class="fas fa-layer-group ms-1 text-secondary"></i>القسم: {{ service_request.section }}</div>
+              <div class="col-6"><i class="fas fa-handshake ms-1 text-secondary"></i>مزود الخدمة: {{ service_request.service_provider }}</div>
+              <div class="col-6"><i class="fas fa-user ms-1 text-secondary"></i>المسؤول الحالي: {{ service_request.assigned_to|default:"غير معيّن" }}</div>
+              <div class="col-6"><i class="fas fa-calendar-alt ms-1 text-secondary"></i>تاريخ الإنشاء: {{ service_request.created_at|date:"Y-m-d H:i" }}</div>
+            </div>
+          </div>
+
+          <form method="post" class="bg-white border rounded-3 p-4">
+            {% csrf_token %}
+            <div class="mb-4">
+              <label for="user_id" class="form-label fw-semibold text-secondary">
+                اختر المستخدم المسؤول عن الطلب
+              </label>
+              <select class="form-select" id="user_id" name="user_id" required>
+                <option value="" disabled selected>اختر مستخدماً</option>
+                {% for user in users %}
+                  <option value="{{ user.id }}" {% if service_request.assigned_to_id == user.id %}selected{% endif %}>
+                    {{ user.get_full_name|default:user.username }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{% url 'request_detail' service_request.id %}" class="btn btn-outline-secondary px-4">
+                إلغاء
+              </a>
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="fas fa-save ms-1"></i>
+                حفظ التعيين
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

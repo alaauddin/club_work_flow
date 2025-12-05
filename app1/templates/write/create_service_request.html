@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  /* تأثير الخلفية العامة */
+  body {
+    /* background: linear-gradient(135deg, #6e8efb, #a777e3); */
+    min-height: 100vh;
+  }
+  /* تصميم البطاقة */
+  .card {
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+  }
+  .card-header {
+    background: linear-gradient(90deg,rgb(107, 174, 255),rgb(0, 72, 116));
+    padding: 20px;
+  }
+  .card-body {
+    background:rgb(103, 118, 133);
+    border-radius: 0 0 15px 15px;
+  }
+  .card-header h3 {
+    margin: 0;
+    font-weight: bold;
+  }
+  /* شريط التقدم الملون */
+  .progress-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+  }
+  .progress-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    font-weight: bold;
+    color: #fff;
+    font-size: 1.1em;
+  }
+  .progress-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -50%;
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.5);
+    z-index: -1;
+    transition: background 0.3s ease;
+  }
+  .progress-step.active {
+    color: #ffd700;
+  }
+  .progress-step.active::after {
+    background: #ffd700;
+  }
+  /* تأثيرات الحركة للخطوات */
+  .wizard-step {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+  }
+  .wizard-step.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  /* تأثير زر "التالي" و"السابق" */
+  .btn-custom {
+    border-radius: 25px;
+    transition: background 0.3s, transform 0.3s;
+  }
+  .btn-custom:hover {
+    transform: scale(1.05);
+  }
+  /* تهيئة حقول الإدخال */
+  .form-control, .form-select {
+    border-radius: 10px;
+  }
+</style>
+
+<div class="container my-5" dir="rtl">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow-lg">
+        <div class="card-header text-center text-white">
+          <h3>إنشاء طلب خدمة جديد</h3>
+        </div>
+        <div class="card-body p-4">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="إغلاق"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <!-- شريط التقدم -->
+          <div class="progress-container">
+            <div class="progress-step active" data-step="1">الخطوة 1</div>
+            <div class="progress-step" data-step="2">الخطوة 2</div>
+            <div class="progress-step" data-step="3">الخطوة 3</div>
+          </div>
+
+          <form id="serviceRequestForm" method="post" action="">
+            {% csrf_token %}
+            <!-- الخطوة 1: معلومات الطلب -->
+            <div class="wizard-step active" id="step-1">
+              <h4 class="mb-3 text-white">الخطوة 1: معلومات الطلب</h4>
+              <div class="mb-3">
+                <label for="title" class="form-label text-white">عنوان الطلب</label>
+                <input type="text" class="form-control" id="title" name="title" placeholder="أدخل عنوان الطلب" required>
+              </div>
+              <div class="mb-3">
+                <label for="description" class="form-label text-white">تفاصيل الطلب</label>
+                <textarea class="form-control" id="description" name="description" rows="5" placeholder="أدخل تفاصيل الطلب" required></textarea>
+              </div>
+              <div class="text-end">
+                <button type="button" class="btn btn-custom btn-primary next-step">التالي</button>
+              </div>
+            </div>
+            <!-- الخطوة 2: اختيار القسم ومزود الخدمة -->
+            <div class="wizard-step d-none" id="step-2">
+              <h4 class="mb-3 text-white">الخطوة 2: اختيار القسم ومزود الخدمة</h4>
+              <div class="mb-3">
+                <label for="section" class="form-label text-white">القسم</label>
+                <select class="form-select" id="section" name="section" required>
+                  <option selected disabled value="">اختر القسم...</option>
+                  {% for section in sections %}
+                    <option value="{{ section.id }}">{{ section.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="service_provider" class="form-label text-white">مزود الخدمة</label>
+                <select class="form-select" id="service_provider" name="service_provider" required>
+                  <option selected disabled value="">اختر مزود الخدمة...</option>
+                  {% for service_provider in service_providers %}
+                    <option value="{{ service_provider.id }}">{{ service_provider.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-custom btn-secondary prev-step">السابق</button>
+                <button type="button" class="btn btn-custom btn-primary next-step">التالي</button>
+              </div>
+            </div>
+            <!-- الخطوة 3: مراجعة وتأكيد الطلب -->
+            <div class="wizard-step d-none" id="step-3">
+              <h4 class="mb-3 text-white">الخطوة 3: مراجعة وتأكيد</h4>
+              <div class="mb-3">
+                <label class="form-label text-white">عنوان الطلب:</label>
+                <p id="reviewTitle" class="border p-2 bg-light rounded"></p>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">تفاصيل الطلب:</label>
+                <p id="reviewDescription" class="border p-2 bg-light rounded"></p>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">القسم:</label>
+                <p id="reviewSection" class="border p-2 bg-light rounded"></p>
+              </div>
+              <div class="mb-3">
+                <label class="form-label text-white">مزود الخدمة:</label>
+                <p id="reviewServiceProvider" class="border p-2 bg-light rounded"></p>
+              </div>
+              <div class="d-flex justify-content-between">
+                <button type="button" class="btn btn-custom btn-secondary prev-step">السابق</button>
+                <button type="submit" class="btn btn-custom btn-success">تأكيد الطلب</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // جافا سكريبت لتحكم الخطوات مع تأثيرات متحركة جذابة
+  document.addEventListener('DOMContentLoaded', function() {
+    const steps = document.querySelectorAll('.wizard-step');
+    const nextButtons = document.querySelectorAll('.next-step');
+    const prevButtons = document.querySelectorAll('.prev-step');
+    const progressSteps = document.querySelectorAll('.progress-step');
+    let currentStep = 0;
+
+    function showStep(step) {
+      steps.forEach((el, index) => {
+        if (index === step) {
+          el.classList.remove('d-none');
+          // إضافة تأثير الحركة مع تأخير بسيط
+          setTimeout(() => { el.classList.add('active'); }, 50);
+        } else {
+          el.classList.add('d-none');
+          el.classList.remove('active');
+        }
+      });
+      progressSteps.forEach((stepEl, index) => {
+        if (index <= step) {
+          stepEl.classList.add('active');
+        } else {
+          stepEl.classList.remove('active');
+        }
+      });
+    }
+
+    nextButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        // التحقق من صحة البيانات في الخطوة الحالية
+        if (currentStep === 0) {
+          const title = document.getElementById('title').value.trim();
+          const description = document.getElementById('description').value.trim();
+          if (!title || !description) {
+            alert('يرجى تعبئة جميع الحقول في هذه الخطوة');
+            return;
+          }
+        }
+        if (currentStep === 1) {
+          const section = document.getElementById('section').value;
+          const serviceProvider = document.getElementById('service_provider').value;
+          if (!section || !serviceProvider) {
+            alert('يرجى اختيار القسم ومزود الخدمة');
+            return;
+          }
+          // إعداد بيانات المراجعة للخطوة الثالثة
+          document.getElementById('reviewTitle').innerText = document.getElementById('title').value;
+          document.getElementById('reviewDescription').innerText = document.getElementById('description').value;
+          document.getElementById('reviewSection').innerText = document.getElementById('section').selectedOptions[0].text;
+          document.getElementById('reviewServiceProvider').innerText = document.getElementById('service_provider').selectedOptions[0].text;
+        }
+        currentStep++;
+        showStep(currentStep);
+      });
+    });
+
+    prevButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        currentStep--;
+        showStep(currentStep);
+      });
+    });
+
+    // عرض الخطوة الأولى عند تحميل الصفحة
+    showStep(currentStep);
+  });
+</script>
+{% endblock %}

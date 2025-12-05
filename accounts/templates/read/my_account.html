@@ -1,0 +1,37 @@
+{%extends 'base.html'%}
+
+{%block title%} Borads {%endblock%}
+
+        {%block breadcrumb%}
+            <li class="breadcrumb-item active" >My Account</li>
+            
+        {% endblock %}
+{%block content%}
+<br><br><br><br> <br><br>
+
+<div class="container">
+    <h1 class="text-center logo my-4">
+      <a href="{% url 'home' %}">الصفحة الرئيسية</a>
+    </h1>
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col">
+                <h1>{{user.username}}</h1>
+              </div>
+              
+            </div>
+            
+            <form method="post" enctype="multipart/form-data" novalidate>
+              {% csrf_token %}
+              {% include 'includes/form.html' %}
+              <button type="submit" class="btn btn-primary btn-block">Save</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

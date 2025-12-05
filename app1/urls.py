@@ -1,0 +1,40 @@
+
+
+
+from django.urls import path
+from . import views
+
+
+urlpatterns = [
+    path('', views.home, name='home'),
+    path('my_request/', views.my_request, name='my_request'),
+    path('requests_to_me/', views.requests_to_me, name='requests_to_me'),
+    path('request_detail/<int:id>/', views.request_detail, name='request_detail'),
+    path('create_report/<int:id>/', views.create_report, name='create_report'),
+    path('create_completion_report/<int:id>/', views.create_completion_report, name='create_completion_report'),
+    path('create_report_out_source/<int:id>/', views.create_report_out_source, name='create_report_out_source'),
+    path('create_completion_report_out_source/<int:id>/', views.create_completion_report_out_source, name='create_completion_report_out_source'),
+    path('create_purchase_order/<int:id>/', views.create_purchase_order, name='create_purchase_order'),
+    path('create_inventory_order/<int:id>/', views.create_inventory_order, name='create_inventory_order'),
+    path('edit_completion_report/<int:id>/', views.edit_completion_report, name='edit_completion_report'),
+    path('purchase_order_mark_as_approved/<int:id>/', views.purchase_order_mark_as_approved, name='purchase_order_mark_as_approved'),
+    path('purchase_order_mark_as_pending/<int:id>/', views.purchase_order_mark_as_pending, name='purchase_order_mark_as_pending'),
+    path('purchase_order_mark_as_used/<int:id>/', views.purchase_order_mark_as_used, name='purchase_order_mark_as_used'),
+    path('inventory_order_mark_as_approved/<int:id>/', views.inventory_order_mark_as_approved, name='inventory_order_mark_as_approved'),
+    path('inventory_order_mark_as_pending/<int:id>/', views.inventory_order_mark_as_pending, name='inventory_order_mark_as_pending'),
+    path('edit_purchase_order/<int:id>/', views.edit_purchase_order, name='edit_purchase_order'),
+    path('edit_inventory_order/<int:id>/', views.edit_inventory_order, name='edit_inventory_order'),
+    path('mark_as_under_review/<int:id>/', views.mark_as_under_review, name='mark_as_under_review'),
+    path('mark_as_in_progress/<int:id>/', views.mark_as_in_progress, name='mark_as_in_progress'),
+    path('request_detail_sm/<int:id>/', views.request_detail_sm, name='request_detail_sm'),
+    path('mark_as_completed/<int:id>/', views.mark_as_complete, name='mark_as_completed'),
+    path('create_service_request/', views.create_service_request, name='create_service_request'),
+    path('purchase_orders/', views.purchase_order_list, name='purchase_order_list'),
+    path('api/purchase-orders/', views.purchase_order_list_api, name='purchase_orders_api'),
+    path('api/update-order-status/', views.update_order_status, name='update_order_status'),
+    path('print_request/<int:id>/', views.print_request, name='print_request'),
+    path('assign_to_user/<int:id>/', views.assign_to_user, name='assign_to_user'),
+
+
+
+]

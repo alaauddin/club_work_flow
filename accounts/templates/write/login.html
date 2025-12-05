@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Create New Topic{% endblock %}
+
+{% block breadcrumb %}
+    <header class="text-center">
+        <h2>نظام إدارة صيانة النادي الترفيهي الرياضي</h2>
+    </header>
+{% endblock %}
+
+{% block content %}
+    <div class="container mt-5" dir="ltr">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-6 col-sm-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 dir='rtl'>تسجيل الدخول</h2>
+
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ next }}">
+                            {% include 'includes/form.html' %}
+                            <button type="submit" class="btn btn-primary btn-block mt-4">Log in</button>
+                        </form>
+                    </div>
+                    <div class="card-footer text-muted text-center">
+                        {#  Create New Account <a href="#">Sign Up</a>  #}
+                        <h2>نظام إدارة صيانة النادي الترفيهي الرياضي</h2>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

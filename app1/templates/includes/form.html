@@ -1,0 +1,73 @@
+{% load widget_tweaks %}
+
+{% if form.non_field_errors %}
+  <div class="alert alert-danger" role="alert">
+    {% for error in form.non_field_errors %}
+      <p {% if forloop.last %}{% endif %} class="mb-0">{{ error }}</p>
+    {% endfor %}
+  </div>
+{% endif %}
+
+<div class="form-container">
+  {% for field in form %}
+    <div class="form-group">
+      {{ field.label_tag }}
+      {% if form.is_bound %}
+        {% if field.errors %}
+          <div class="input-group is-invalid">
+            {% render_field field class="form-control" %}
+            {% for error in field.errors %}
+              <div class="invalid-feedback">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% else %}
+          {% if field.name == 'place_of_installation_image' %}
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" name="{{ field.name }}" id="{{ field.id_for_label }}" onchange="previewImage(this)">
+              <label class="custom-file-label" for="{{ field.id_for_label }}">Choose file</label>
+            </div>
+            <div class="image-preview-container mt-3">
+              <img id="imagePreview" src="#" alt="Image Preview" style="max-width: 100%; max-height: 200px; display: none;">
+            </div>
+          {% else %}
+            {% render_field field class="form-control" %}
+          {% endif %}
+        {% endif %}
+      {% else %}
+        {% if field.name == 'place_of_installation_image' %}
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" name="{{ field.name }}" id="{{ field.id_for_label }}" onchange="previewImage(this)">
+            <label class="custom-file-label" for="{{ field.id_for_label }}">Choose file</label>
+          </div>
+          <div class="image-preview-container mt-3">
+            <img id="imagePreview" src="#" alt="Image Preview" style="max-width: 100%; max-height: 100%; display: none;">
+          </div>
+        {% else %}
+          {% render_field field class="form-control" %}
+        {% endif %}
+      {% endif %}
+
+      {% if field.help_text %}
+        <small class="form-text text-muted">
+          {{ field.help_text }}
+        </small>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+  // Function to preview the image
+  function previewImage(input) {
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+
+      reader.onload = function (e) {
+        $('#imagePreview').attr('src', e.target.result);
+        $('#imagePreview').show();
+      }
+
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+</script>

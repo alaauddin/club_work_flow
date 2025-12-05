@@ -1,0 +1,512 @@
+{% load static %}
+
+<style>
+    /* Consolidated and Enhanced CSS */
+    body {
+        font-family: 'Amiri', serif;
+        background: white;
+        color: #000;
+        direction: rtl;
+    }
+
+    .print-container {
+        border: 5px solid #000; /* Added thicker border for printable page */
+        padding: 30px;
+        margin: 10px auto;
+        max-width: 900px;
+        background-color: white;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+    }
+
+    @media print {
+        .print-container {
+            border: 5px solid #000; /* Ensure border is visible in print */
+        }
+    }
+
+    /* Header Section */
+    .organization-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 3px solid #000;
+        margin-bottom: 0px;
+    }
+
+    .org-titles {
+        text-align: center;
+        flex: 1;
+        padding-left: 30px;
+    }
+
+    .org-titles h4 {
+        font-size: 24px;
+        margin: 0 0 5px 0;
+        color: rgb(0, 0, 0);
+    }
+
+    .org-titles h5 {
+        font-size: 18px;
+        margin: 8px 0;
+        color: #00000;
+    }
+
+    .org-logo {
+        flex: 1;
+        text-align: center;
+        padding: 1px;
+    }
+
+    .org-logo img {
+        /* height: 100px; */
+        max-width: 150px;
+        object-fit: contain;
+    }
+
+    /* Document Meta */
+    .document-meta {
+        flex: 1;
+        text-align: center;
+        padding-right: 5px;
+    }
+
+    .meta-row {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 20px;
+    }
+
+    .meta-label {
+        font-weight: 700;
+        min-width: 150px;
+        text-align: left;
+        color: #2c3e50;
+    }
+
+    .meta-value {
+        border-bottom: 2px dotted #666;
+        min-width: 100px;
+        text-align: center;
+        padding: 0 15px;
+        direction: rtl
+        font-weight: 500;
+    }
+
+    /* Document Title */
+    .document-title {
+        margin: 10px 0;
+        text-align: center;
+    }
+
+    .document-title h2 {
+        font-size: 20px;
+        margin: 0 0 10px 0;  /* Updated margin to match the new style */
+        color: rgb(0, 0, 0);
+        letter-spacing: -1px;
+    }
+
+    .title-underline {
+        width: 200px;
+        height: 2px;
+        background: rgb(0, 0, 0);
+        margin: 0 auto;
+        border-radius: 2px;
+    }
+
+    /* Content Sections */
+    .section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .section-title {
+        font-weight: 700;
+        margin-bottom: 15px;
+        border-bottom: 2px solid rgb(0, 0, 0);
+        padding-bottom: 8px;
+        color: rgb(0, 0, 0);
+        font-size: 20px;
+    }
+
+    .field {
+        margin: 10px 0;
+        padding: 5px 0;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .field span {
+        font-weight: 700;
+        min-width: 120px;
+        color: #2c3e50;
+    }
+
+    /* Box Styles */
+    .report-box {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-bottom: 5px;
+        background: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* Signature Section */
+    .signature-area {
+        margin-top: 15px;
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+    }
+
+    .signature-box {
+        text-align: center;
+        width: 30%;
+        padding: 10px;
+    }
+
+    .signature-box p:first-child {
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: rgb(0, 0, 0);
+    }
+
+    .signature-line {
+        width: 80%;
+        height: 1px;
+        background: #666;
+        margin: 0 auto 10px;
+    }
+
+    /* Footer */
+    .footer-line {
+        margin-top: 50px;
+        border-top: 3px solid rgb(0, 0, 0);
+        text-align: center;
+        font-size: 14px;
+        padding-top: 10px;
+        color: #666;
+    }
+
+    .d-inline-flex {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .ms-2 {
+        margin-left: 0.5rem;
+    }
+</style>
+<style>
+    .log-timeline {
+        display: flex;
+        gap: 15px;
+        overflow-x: auto;
+        padding: 10px 0;
+        margin: -10px;
+        flex-wrap: nowrap;
+    }
+
+    .log-box {
+        flex-shrink: 0;
+        width: 120px;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        position: relative;
+        background: #f8f9fa;
+        transition: all 0.2s ease;
+    }
+
+    .log-box::before {
+        content: "";
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: rgb(0, 0, 0);
+        border-radius: 50%;
+    }
+
+    .log-content div {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 0.9em;
+    }
+
+    .log-content span {
+        font-weight: 600;
+        color:rgb(0, 0, 0);
+        margin-left: 15px;  /* Updated margin-left to 15px */
+    }
+
+    .log-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    }
+
+    /* Hide scrollbar for cleaner look */
+    .log-timeline::-webkit-scrollbar {
+        display: none;
+    }
+</style>
+
+
+<div class="print-container">
+    <!-- Document Heading -->
+    <div class="document-heading">
+        <div class="organization-header">
+            <div class="org-titles">
+                <h4>الجمهورية المهنية</h4>
+                <h5>النادي الترفيهي الرياضي</h5>
+                <h5>الادارة الفنية</h5>
+            </div>
+
+            <div class="org-logo">
+                <img src="{% static 'images/logo.png' %}" alt="الشعار الرسمي">
+            </div>
+
+            <div class="document-meta">
+                <div class="meta-row">
+                    <span class="meta-label">الرقم :</span>
+                    <span class="meta-value">{{ service_request.id }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">المرققات :</span>
+                    <span class="meta-value">.....................</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">الموافق :</span>
+                    <span class="meta-value">{{ service_request.created_at|date:"d/m/Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="document-title">
+            <h2>نموذج طلب صيانة</h2>
+            <div class="title-underline"></div>
+        </div>
+    </div>
+
+    <!-- Rest of the content remains the same with updated class names -->
+    <!-- ... (keep your existing content structure) ... -->
+    <!-- Logs -->
+
+
+    <style>
+        /* Add these styles */
+        .report-row {
+            display: flex;
+            flex-direction: row-reverse; /* For RTL layout */
+            gap: 15px;
+            margin-bottom: 20px; 
+        }
+    
+        .report-col {
+            flex: 1;
+            width: 100%;
+        }
+    
+           
+        .report-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 20px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+    </style>
+    
+    <!-- Reports Section -->
+    <div class="section">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>تفاصيل طلب الصيانة</span>
+            <span style="font-weight: 400; font-size: 0.65em; color: #444; margin-right: 10px;">
+                <strong>تاريخ التقرير:</strong>
+                {{ service_request.created_at|date:"d/m/Y H:i" }}
+            </span>
+        </div>
+            <!-- Service Request Column -->
+            <div class="col-md-12 mb-4">
+                <div class="card shadow-sm border-primary rounded-4">
+                    
+                    <div class="card-body text-end" dir="rtl">
+                        <p><strong>العنوان:</strong> {{ service_request.title }}</p>
+                        <p><strong>الوصف:</strong> {{ service_request.description }}</p>
+                        <div class="d-flex flex-wrap gap-4 mb-3 text-end align-items-center" dir="rtl">
+                                                        
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        
+    </div>
+    <div class="section">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>عرض المختص على طبيعة الطلب</span>
+            <span style="font-weight: 400; font-size: 0.65em; color: #444; margin-right: 10px;">
+                <strong>تاريخ التقرير:</strong>
+                {{ reports.first.created_at|date:"d/m/Y H:i" }}
+            </span>
+        </div>
+            <!-- Reports Column -->
+                {% for report in reports %}
+                    <div class="col-md-12 mb-4">
+                        <div class="card-body text-end" dir="rtl">
+                           
+                            <p><strong>العنوان:</strong> {{ report.title }}</p>
+                            <p><strong>الوصف:</strong> {{ report.description }}</p>
+
+                                {% if report.purchase_order %}
+                                    <span style="margin-right: 30px;"><strong>طلب شراء:</strong> {{ report.purchase_order.refrence_number }} - {{ report.purchase_order.get_status_display }}</span>
+                                {% endif %}
+                                {% if report.inventory_order %}
+                                    <span style="margin-right: 30px;"><strong>طلب مستودع:</strong> {{ report.inventory_order.refrence_number }} - {{ report.inventory_order.get_status_display }}</span>
+                                {% endif %}
+                            </div>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">لا توجد تقارير.</p>
+                {% endfor %}
+    </div>
+    {% if completion_report %}
+    <div class="section" style="position: relative;">
+        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>تقرير الانجاز</span>
+            <span style="font-weight: 400; font-size: 0.65em; color: #444; margin-right: 10px;">
+                <strong>تاريخ التقرير:</strong>
+                {{ completion_report.created_at|date:"d/m/Y H:i" }}
+            </span>
+        </div>
+        <div class="col-md-12 mb-4">
+            <div class="card-body text-end" dir="rtl">
+                <p><strong>العنوان:</strong> {{ completion_report.title }}</p>
+                <p><strong>الوصف:</strong> {{ completion_report.description }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+    <div class="section">
+        <div class="section-title">سجل الطلب</div>
+        <div class="log-timeline">
+            {% for log in service_request_logs %}
+                <div class="log-box">
+                    <div class="log-content">
+                        <div>
+                             {{ log.created_by.get_full_name }}
+                             <p style="font-size : 0.8em; color: #666; margin: 0; padding: 0; font-weight: 400; text-align: right; direction: ltr; font-family: 'Courier New', Courier, monospace; ">{{ log.created_at|date:"d/m/Y H:i" }}</p>
+                             {{ log.comment|truncatechars:40 }}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="no-logs">لا توجد سجلات.</p>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="footer-line">
+        نظام إدارة الصيانة الذكي | الإصدار 2.5 | جميع الحقوق محفوظة © 2024
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const printStyles = `
+            @media print {
+                body {
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .print-container {
+                    border: 5px solid #000; /* Added thicker border for printable page */
+                    padding: 30px;
+                    margin: 10px auto;
+                    max-width: 900px;
+                    background-color: white;
+                    box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+                }
+                .document-title {
+                    margin: 10px 0;
+                    text-align: center;
+                }
+                p {
+                    font-size: 14px !important;
+                    line-height: 1.5 !important;
+                    padding: 0 !important;
+                }
+                            
+                
+                .organization-header {
+                    padding: 5px 0 !important;
+                    transform: scale(0.95);
+                    transform-origin: top;
+                }
+                
+                .org-logo img {
+                    max-width: 100px !important;
+                }
+                
+                .section {
+                    padding: 10px !important;
+                    margin-bottom: 8px !important;
+                }
+                
+                .report-row {
+                    gap: 8px !important;
+                }
+                
+                .report-box {
+                    padding: 8px !important;
+                    font-size: 12px !important;
+                }
+                
+                .log-timeline {
+                    gap: 8px !important;
+                    padding: 5px 0 !important;
+                }
+                
+                .log-box {
+                    width: 70px !important;
+                    padding: 8px !important;
+                    font-size: 10px !important;
+                }
+                
+                .footer-line {
+                    margin-top: 20px !important;
+                }
+                .signature-box {
+                    text-align: center;
+                    width: 30%;
+                    padding: 10px;
+                }
+
+                .signature-box p:first-child {
+                    font-weight: 700;
+                    margin-bottom: 0px;
+                    color: rgb(0, 0, 0);
+                }
+                /* Force A4 aspect ratio */
+                @page {
+                    size: A4 portrait;
+                    margin: 10mm;
+                }
+            }
+        `;
+        
+        const styleSheet = document.createElement('style');
+        styleSheet.innerText = printStyles;
+        document.head.appendChild(styleSheet);
+        
+        // Optional: Trigger print dialog automatically
+        window.print();
+    });
+</script>

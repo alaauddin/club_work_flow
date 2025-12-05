@@ -1,0 +1,254 @@
+{% load static %}
+{% load group_filters %}
+
+<!DOCTYPE html>
+<html lang="a" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Dashboard | Service Management{% endblock %}</title>
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+   
+    /* Sidebar styles for larger screens */
+    @media (min-width: 992px) {
+      .sidebar {
+        width: 250px;
+        height: 100vh;
+        background-color: #007bff;
+        color: white;
+        position: fixed;
+        top: 0;
+        right: 0;
+        padding-top: 20px;
+      }
+      .sidebar a {
+        color: white;
+        padding: 10px;
+        display: block;
+        text-decoration: none;
+      }
+      .sidebar a:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 5px;
+      }
+      .content {
+        margin-right: 260px;
+        padding: 20px;
+      }
+    }
+    /* Optional: Adjust the offcanvas body link styles */
+    .offcanvas a {
+      color: white;
+      padding: 10px;
+      display: block;
+      text-decoration: none;
+    }
+    .offcanvas a:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+    }
+    /* Loading Overlay Styles */
+    .loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(53, 94, 147, 0.9);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: opacity 0.3s ease;
+    }
+
+    .loader-overlay.hidden {
+      display: none;
+    }
+
+    .loader-logo {
+      width: 100px;
+      height: 100px;
+      animation: rotate 2s linear infinite;
+      border: 2px solid white;  /* Added border to loader logo */
+      border-radius: 50%;       /* Added border radius for circular effect */
+      
+    }
+
+    @keyframes rotate {
+      from {
+        transform: rotate(0deg);
+      }
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loaded .loader-overlay {
+      opacity: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div class="loader-overlay">
+    <img id="loader" src="{% static 'images/logo.png' %}" alt="Loading..." class="loader-logo">
+  </div>
+
+  <!-- Sidebar for larger screens -->
+  <div class="sidebar d-none d-lg-block">
+    {#  logo  #}
+    <img src="{% static 'images/logo.png' %}" alt="Logo" class="img-fluid rounded-circle mx-auto d-block" style="width: 100px; height: 100px;">
+    <a href="{% url 'home' %}"><i class="fas fa-home"></i> الرئيسية</a>
+
+    {% if user.is_authenticated %}
+    {% if user|has_group:"SM" or user|has_group:"ADMIN" %}
+      <a href="{% url 'my_request' %}"><i class="fas fa-tasks"></i> طلباتي</a>
+      <a href="{% url 'create_service_request' %}"><i class="fas fa-plus-circle"></i> تقديم طلب</a>
+    {% endif %}
+    
+    {% if user|has_group:"SP" or user|has_group:"ADMIN" %}
+      <a href="{% url 'requests_to_me' %}"><i class="fas fa-tasks"></i> طلبات الأقسام الخاصة بي</a>
+    {% endif %}
+    
+    {% if user|has_group:"PM" or user|has_group:"ADMIN" or user|has_group:"IM" %}
+      <a href="{% url 'purchase_order_list' %}"><i class="fas fa-file-alt"></i> اوامر الشراء</a>
+    {% endif %}
+    
+    <a href="{% url 'my_account' %}"><i class="fas fa-user"></i> حسابي</a>
+    <a href="{% url 'password_change' %}"><i class="fas fa-key"></i> تغيير كلمة المرور</a>
+    <form action="{% url 'logout' %}" method="post">
+      {% csrf_token %}
+      <button type="submit" class="btn text-white">
+        <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+      </button>
+    </form>
+  {% else %}
+    <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</a>
+  {% endif %}
+  
+
+
+  
+
+    
+  </div>
+
+  <!-- Offcanvas Sidebar for mobile -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasSidebar" aria-labelledby="offcanvasSidebarLabel">
+    <div class="offcanvas-header bg-primary text-white">
+      <h5 class="offcanvas-title" id="offcanvasSidebarLabel">🚀 النظام</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body bg-primary">
+      <img src="{% static 'images/logo.png' %}" alt="Logo" class="img-fluid rounded-circle mx-auto d-block" style="width: 100px; height: 100px;">
+      <a href="{% url 'home' %}"><i class="fas fa-home"></i> الرئيسية</a>
+  
+      {% if user.is_authenticated %}
+      {% if user|has_group:"SM" or user|has_group:"ADMIN" %}
+        <a href="{% url 'my_request' %}"><i class="fas fa-tasks"></i> طلباتي</a>
+        <a href="{% url 'create_service_request' %}"><i class="fas fa-plus-circle"></i> تقديم طلب</a>
+      {% endif %}
+      
+      {% if user|has_group:"SP" or user|has_group:"ADMIN" %}
+        <a href="{% url 'requests_to_me' %}"><i class="fas fa-tasks"></i> طلبات الأقسام الخاصة بي</a>
+      {% endif %}
+      
+      {% if user|has_group:"PM" or user|has_group:"ADMIN" or user|has_group:"IM" %}
+        <a href="{% url 'purchase_order_list' %}"><i class="fas fa-file-alt"></i> اوامر الشراء</a>
+      {% endif %}
+      
+      <a href="{% url 'my_account' %}"><i class="fas fa-user"></i> حسابي</a>
+      <a href="{% url 'password_change' %}"><i class="fas fa-key"></i> تغيير كلمة المرور</a>
+      <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn text-white">
+          <i class="fas fa-sign-out-alt"></i> تسجيل الخروج
+        </button>
+      </form>
+    {% else %}
+      <a href="{% url 'login' %}"><i class="fas fa-sign-in-alt"></i> تسجيل الدخول</a>
+    {% endif %}
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="content">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+      <div class="container-fluid">
+        <!-- Hamburger button visible on small screens -->
+        <button class="btn btn-primary d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasSidebar" aria-controls="offcanvasSidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+        <span class="navbar-brand ms-2"><i class="fas fa-cogs"></i> إدارة الخدمات</span>
+        <img src="{% static 'images/logo.png' %}" alt="Logo" class="img-fluid rounded-circle" style="width: 40px; height: 40px;">
+        <span class="ms-auto">
+          مرحباً،
+          {% if user.is_authenticated %}
+            {{ user.username }}
+          {% else %}
+            زائر
+          {% endif %}
+        
+        </span>
+      </div>
+    </nav>
+
+    <div class="container mt-4" dir="rtl">
+      {% if messages %}
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+          {% for message in messages %}
+            {{ message }}
+          {% endfor %}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endif %}
+      {% block content %}
+      <!-- Page Content Goes Here -->
+      {% endblock %}
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Animation Script -->
+<!-- Loader Script -->
+
+<script>
+  // Hide loader when page is shown, including back/forward cache
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted || performance.getEntriesByType("navigation")[0].type === "back_forward") {
+      document.querySelector('.loader-overlay').classList.add('hidden');
+    }
+  });
+
+  // Hide loader on full load
+  window.addEventListener('load', function () {
+    document.querySelector('.loader-overlay').classList.add('hidden');
+  });
+
+  // Show loader overlay on link or form submissions
+  document.addEventListener('click', function (e) {
+    const target = e.target.closest('a, button[type="submit"]');
+    if (target && !target.hasAttribute('data-no-loader') && !target.getAttribute('target')) {
+      document.querySelector('.loader-overlay').classList.remove('hidden');
+    }
+  });
+
+  // Show loader on unload (navigation away)
+  window.addEventListener('beforeunload', function () {
+    document.querySelector('.loader-overlay').classList.remove('hidden');
+  });
+</script>
+
+
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

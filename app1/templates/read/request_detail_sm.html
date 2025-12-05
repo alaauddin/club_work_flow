@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container my-5">
+  <!-- Hero Header -->
+  <div class="p-5 text-center text-white rounded-3 mb-5" style="background: linear-gradient(135deg, #4e73df, #1cc88a);">
+    <h1 class="display-4 fw-bold"><i class="fas fa-file-alt"></i> طلب الخدمة</h1>
+    <p class="lead">{{ service_request.title }}</p>
+  </div>
+
+  <!-- Service Request Details -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-6">
+      <div class="card shadow border-0">
+        <div class="card-body">
+          <h4 class="card-title text-primary">{{ service_request.title }}</h4>
+          <p class="card-text text-muted">{{ service_request.description }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card shadow border-0">
+        <div class="card-body">
+          <h4 class="card-title text-secondary"><i class="fas fa-info-circle"></i> التفاصيل</h4>
+          <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              الحالة:
+              {% if service_request.status == 'pending' %}
+                <span class="badge bg-warning"><i class="fas fa-hourglass-half"></i> قيد الانتظار</span>
+              {% elif service_request.status == 'in_progress' %}
+                <span class="badge bg-info text-dark"><i class="fas fa-spinner"></i> قيد التنفيذ</span>
+              {% elif service_request.status == 'completed' %}
+                <span class="badge bg-success"><i class="fas fa-check-circle"></i> مكتمل</span>
+              {% elif service_request.status == 'under_review' %}
+                <span class="badge bg-primary"><i class="fas fa-eye"></i> قيد المراجعة</span>
+              {% else %}
+                <span class="badge bg-light text-dark">{{ service_request.status }}</span>
+              {% endif %}
+            </li>
+            <li class="list-group-item">القسم: {{ service_request.section }}</li>
+            <li class="list-group-item">مزود الخدمة: {{ service_request.service_provider }}</li>
+            <li class="list-group-item">تم الإنشاء بواسطة: {{ service_request.created_by }}</li>
+            <li class="list-group-item">تم التحديث بواسطة: {{ service_request.updated_by }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports Section -->
+  <div class="mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="text-warning"><i class="fas fa-file-invoice"></i> التقارير</h3>
+      {% if service_request.status == 'pending' or service_request.status == 'in_progress' %}
+        <h2 class="text-primary">قيد الانتظار <i class="fas fa-hourglass-half"></i></h2>
+      {% elif service_request.status == 'under_review' %}
+        <h2 class="text-primary">قيد المراجعة <i class="fas fa-eye"></i></h2>
+      {% elif service_request.status == 'completed' %}
+        <h2 class="text-success">مكتمل <i class="fas fa-check-circle"></i></h2>
+      {% endif %}
+    </div>
+    <div class="row g-4">
+      {% for report in reports %}
+      <div class="col-12">
+        <div class="card border-0 shadow-sm rounded-3">
+          <div class="card-body">
+            <h5 class="card-title text-dark">{{ report.title }}</h5>
+            {% if report.description %}
+              <p class="card-text text-muted">{{ report.description }}</p>
+            {% endif %}
+            <p class="small text-muted">تم الإنشاء بواسطة: {{ report.created_by }} ({{ report.created_at }})</p>
+          </div>
+          <div class="card-footer bg-white">
+            <div class="row">
+              <!-- Completion Reports -->
+              <div class="col-md-4">
+                <h6 class="text-success mb-2"><i class="fas fa-check-circle"></i> تقارير الإنجاز</h6>
+                <ul class="list-group list-group-flush">
+                  {% for completion_report in completion_reports %}
+                  <li class="list-group-item">
+                    {{ completion_report.title }}<br>
+                    <small class="text-muted">{{ completion_report.created_by }} ({{ completion_report.created_at }})</small>
+                  </li>
+                  <li class="list-group-item">{{ completion_report.description }}</li>
+                  {% empty %}
+                  <li class="list-group-item text-muted">لا توجد تقارير إنجاز متاحة.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              <!-- Purchase Orders -->
+              <div class="col-md-4">
+                <h6 class="text-primary mb-2"><i class="fas fa-shopping-cart"></i> طلبات الشراء</h6>
+                {% if report.purchase_order %}
+                  <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                      الرقم المرجعي: {{ report.purchase_order.refrence_number }}<br>
+                      الحالة: <span class="badge bg-info text-light rounded-pill">{{ report.purchase_order.get_status_display }}</span>
+                    </li>
+                  </ul>
+                {% else %}
+                  <div class="alert alert-secondary p-2" role="alert">
+                    لا توجد طلبات شراء متاحة.
+                  </div>
+                {% endif %}
+              </div>
+              <!-- Inventory Orders -->
+              <div class="col-md-4">
+                <h6 class="text-danger mb-2"><i class="fas fa-box"></i> طلبات المخزون</h6>
+                {% if report.inventory_order %}
+                  <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                      الرقم المرجعي: {{ report.inventory_order.refrence_number }}<br>
+                      الحالة: <span class="badge bg-danger text-light rounded-pill">{{ report.inventory_order.get_status_display }}</span>
+                    </li>
+                  </ul>
+                {% else %}
+                  <div class="alert alert-secondary p-2" role="alert">
+                    لا توجد طلبات مخزون متاحة.
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <p class="text-muted">لا توجد تقارير متاحة.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Operations Section -->
+  {% if service_request.status == 'under_review' %}
+  <div class="mb-5">
+    <div class="card border-0 shadow-lg rounded-3 bg-danger text-white">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <h3><i class="fas fa-file-invoice"></i> العمليات</h3>
+          </div>
+          <div class="col-md-6 text-end">
+            {% if service_request.status == 'under_review' %}
+            <a href="{% url 'mark_as_completed' service_request.id %}?next={{ request.path }}" class="btn btn-light btn-lg">اكمال الطلب</a>
+            <a href="{% url 'mark_as_in_progress' service_request.id %}" class="btn btn-outline-light btn-lg">عادة لقيد التنفيذ</a>
+
+            {% endif %}
+        
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Logs Section -->
+  <div class="mb-5">
+    <h3 class="text-success mb-4"><i class="fas fa-history"></i> السجلات</h3>
+    <div class="card border-0 shadow-sm rounded-3">
+      <div class="card-body">
+        <div class="row g-4">
+          {% for log in service_request_logs %}
+          <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm rounded-3">
+              <div class="card-body text-center">
+                <div class="mb-2">
+                  <i class="fas fa-map-marker-alt fa-2x text-success"></i>
+                </div>
+                <h5 class="card-title">{{ log.created_by }}</h5>
+                <p class="card-text"><small class="text-muted">({{ log.created_at }})</small></p>
+                <p class="card-text">{{ log.comment }}</p>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12">
+            <p class="text-muted text-center">لا توجد سجلات متاحة.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
