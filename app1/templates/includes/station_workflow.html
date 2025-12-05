@@ -62,28 +62,33 @@
             <label class="form-label"><strong>الإجراءات:</strong></label>
             <div class="btn-group-vertical w-100 gap-2" role="group">
                 <!-- Move to Next Station -->
-                {% if next_station and can_move_next %}
-                <a href="{% url 'move_to_next' service_request.id %}" class="btn btn-success btn-lg">
-                    <i class="fas fa-arrow-circle-left"></i> الانتقال إلى: {{ next_station.name_ar }}
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                {% if can_move_next %}
+                <a href="{% url 'move_to_next' service_request.id %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-right ms-2"></i>
+                    الانتقال للمحطة التالية: {{ next_station.name_ar }}
                 </a>
-                {% elif next_station %}
-                <button class="btn btn-secondary btn-lg" disabled title="ليس لديك صلاحية للانتقال">
-                    <i class="fas fa-lock"></i> الانتقال إلى: {{ next_station.name_ar }}
-                </button>
                 {% endif %}
-
-                <!-- Manual Station Selection (if user has access to other stations) -->
-                {% if accessible_stations|length > 1 %}
+                
+                {% if can_send_back and previous_station %}
+                <a href="{% url 'send_back' service_request.id %}" class="btn btn-danger">
+                    <i class="fas fa-undo ms-2"></i>
+                    إرجاع للمحطة السابقة
+                </a>
+                {% endif %}
+                
+                {% if accessible_stations %}
                 <div class="dropdown">
-                    <button class="btn btn-outline-primary btn-lg dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-exchange-alt"></i> الانتقال إلى محطة محددة
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="jumpStationDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-exchange-alt ms-2"></i>
+                        الانتقال لمحطة محددة
                     </button>
-                    <ul class="dropdown-menu w-100">
+                    <ul class="dropdown-menu" aria-labelledby="jumpStationDropdown">
                         {% for station in accessible_stations %}
                         {% if station != service_request.current_station %}
                         <li>
                             <a class="dropdown-item" href="{% url 'move_to_station' service_request.id station.id %}">
-                                <span class="badge me-2" style="background-color: {{ station.color }};">{{ station.order }}</span>
+                                <span class="badge rounded-pill me-2" style="background-color: {{ station.color }};">&nbsp;</span>
                                 {{ station.name_ar }}
                             </a>
                         </li>

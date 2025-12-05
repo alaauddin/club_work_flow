@@ -1,19 +1,14 @@
-
-
-
 from django.urls import path
 from . import views
-
 
 urlpatterns = [
     path('', views.home, name='home'),
     path('my_request/', views.my_request, name='my_request'),
+    path('my_stations/', views.my_stations, name='my_stations'),
     path('requests_to_me/', views.requests_to_me, name='requests_to_me'),
     path('request_detail/<int:id>/', views.request_detail, name='request_detail'),
     path('create_report/<int:id>/', views.create_report, name='create_report'),
     path('create_completion_report/<int:id>/', views.create_completion_report, name='create_completion_report'),
-    path('create_report_out_source/<int:id>/', views.create_report_out_source, name='create_report_out_source'),
-    path('create_completion_report_out_source/<int:id>/', views.create_completion_report_out_source, name='create_completion_report_out_source'),
     path('create_purchase_order/<int:id>/', views.create_purchase_order, name='create_purchase_order'),
     path('create_inventory_order/<int:id>/', views.create_inventory_order, name='create_inventory_order'),
     path('edit_completion_report/<int:id>/', views.edit_completion_report, name='edit_completion_report'),
@@ -34,8 +29,9 @@ urlpatterns = [
     path('api/update-order-status/', views.update_order_status, name='update_order_status'),
     path('print_request/<int:id>/', views.print_request, name='print_request'),
     path('assign_to_user/<int:id>/', views.assign_to_user, name='assign_to_user'),
-    
     # New station transition URLs
     path('move_to_next/<int:id>/', views.move_to_next_station_view, name='move_to_next'),
     path('move_to_station/<int:id>/<int:station_id>/', views.move_to_station_view, name='move_to_station'),
+    path('send_back/<int:id>/', views.send_back_to_previous, name='send_back'),
+    path('assign_pipeline/<int:id>/', views.assign_pipeline, name='assign_pipeline'),
 ]

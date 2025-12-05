@@ -1,179 +1,395 @@
 {% extends 'base.html' %}
 
-{% block title %}لوحة التحكم - نظام إدارة الخدمات{% endblock %}
-
-{% block extra_head %}
-  <!-- تضمين Bootstrap 5 CSS (إذا لم يتم تضمينه مسبقًا في base.html) -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background: #f4f6f9;
-    }
-    .card {
-      transition: transform 0.2s;
-      cursor: pointer;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
-    }
-    .stats .card {
-      min-width: 200px;
-    }
-    .station-card {
-      border-right: 4px solid;
-      transition: all 0.3s ease;
-    }
-    .station-card:hover {
-      transform: translateY(-5px) scale(1.02);
-    }
-  </style>
-{% endblock %}
-
 {% block content %}
-<div class="container-fluid py-4" dir="rtl">
-  <!-- شريط التنقل / الرأس -->
-  <div class="row mb-4">
-    <div class="col" >
-      <h1 class="h3 mb-0 text-gray-800">لوحة التحكم</h1>
-      <p class="text-muted">نظرة عامة على طلبات الخدمة والتقارير</p>
+<style>
+  :root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-success: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --gradient-info: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    --gradient-warning: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    --card-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    --hover-shadow: 0 15px 40px rgba(0,0,0,0.15);
+  }
+
+  body {
+    background: #f8fafc;
+  }
+
+  .dashboard-hero {
+    background: var(--gradient-primary);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: var(--card-shadow);
+  }
+
+  .dashboard-hero h1 {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+    min-height: 120px;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--gradient-primary);
+  }
+
+  .stat-card.success::before { background: var(--gradient-success); }
+  .stat-card.info::before { background: var(--gradient-info); }
+  .stat-card.warning::before { background: var(--gradient-warning); }
+
+  .stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--hover-shadow);
+  }
+
+  .stat-value {
+    font-size: clamp(2rem, 5vw, 2.5rem);
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+  }
+
+  .stat-card.success .stat-value { background: var(--gradient-success); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat-card.info .stat-value { background: var(--gradient-info); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .stat-card.warning .stat-value { background: var(--gradient-warning); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+  .stat-label {
+    color: #64748b;
+    font-weight: 500;
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-icon {
+    position: absolute;
+    right: 1.5rem;
+    top: 1.5rem;
+    font-size: clamp(2rem, 4vw, 2.5rem);
+    opacity: 0.1;
+  }
+
+  .chart-card {
+    background: white;
+    border-radius: 1rem;
+    padding: clamp(1rem, 3vw, 2rem);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-title {
+    font-size: clamp(1.1rem, 3vw, 1.3rem);
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .chart-title i {
+    background: var(--gradient-primary);
+    color: white;
+    width: clamp(35px, 8vw, 40px);
+    height: clamp(35px, 8vw, 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    font-size: clamp(1rem, 2.5vw, 1.2rem);
+  }
+
+  .chart-container {
+    position: relative;
+    height: 300px;
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-hero {
+      border-radius: 0.5rem;
+      margin: 0 -1rem 1.5rem -1rem;
+      padding: 1.5rem 1rem;
+    }
+
+    .stats-grid {
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      padding: 1rem;
+      min-height: 100px;
+    }
+
+    .chart-container {
+      height: 250px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+</style>
+
+<div class="container-fluid" dir="rtl">
+  <!-- Hero Section -->
+  <div class="dashboard-hero">
+    <div class="container">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div>
+          <h1 class="fw-bold mb-2">
+            <i class="fas fa-chart-line ms-2"></i>
+            لوحة التحليلات والإحصائيات
+          </h1>
+          <p class="mb-0 opacity-75">مرحباً {{ user.get_full_name|default:user.username }} - نظرة شاملة على طلبات الصيانة</p>
+        </div>
+        <div>
+          <a href="{% url 'my_stations' %}" class="btn btn-light">
+            <i class="fas fa-list ms-2"></i>
+            محطاتي
+          </a>
+        </div>
+      </div>
     </div>
   </div>
-  
-  <div class="row my-4 text-center">
-    <div class="col-12">
-      <canvas id="sectionStationChart"></canvas>
-    </div>
-  </div>
-  
-  <!-- بطاقات الإحصائيات -->
-  <div class="row g-3">
-    <!-- Total Requests -->
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white bg-primary shadow">
-        <div class="card-body">
-          <h5 class="card-title">إجمالي الطلبات</h5>
-          <p class="card-text fs-4">{{ total_requests }}</p>
-        </div>
+
+  <div class="container">
+    <!-- Statistics Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <i class="fas fa-clipboard-list stat-icon"></i>
+        <div class="stat-label">إجمالي الطلبات</div>
+        <div class="stat-value">{{ total_requests }}</div>
+      </div>
+
+      <div class="stat-card success">
+        <i class="fas fa-tasks stat-icon"></i>
+        <div class="stat-label">طلباتي</div>
+        <div class="stat-value">{{ my_requests_count }}</div>
+      </div>
+
+      <div class="stat-card info">
+        <i class="fas fa-inbox stat-icon"></i>
+        <div class="stat-label">الطلبات الموجهة لي</div>
+        <div class="stat-value">{{ requests_to_me_count }}</div>
+      </div>
+
+      <div class="stat-card warning">
+        <i class="fas fa-exclamation-triangle stat-icon"></i>
+        <div class="stat-label">بدون مسار عمل</div>
+        <div class="stat-value">{{ requests_without_pipeline }}</div>
       </div>
     </div>
-    
-    <!-- Dynamic Station Cards -->
-    {% for station in stations %}
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card text-white shadow station-card" 
-           style="background-color: {{ station.color }}; border-right-color: {{ station.color }};">
-        <div class="card-body">
-          <h5 class="card-title">
-            <i class="fas fa-circle me-2"></i>{{ station.name_ar }}
-          </h5>
-          <p class="card-text fs-4">
-            {{ station.request_count|default:0 }}
-          </p>
-          {% if station.description %}
-          <small class="text-white-50">{{ station.description }}</small>
-          {% endif %}
+
+    <!-- Charts Row -->
+    <div class="row g-3">
+      <!-- Station Distribution Chart -->
+      <div class="col-lg-6">
+        <div class="chart-card">
+          <div class="chart-title">
+            <i class="fas fa-circle-notch"></i>
+            توزيع الطلبات حسب المحطات
+          </div>
+          <div class="chart-container">
+            <canvas id="stationChart"></canvas>
+          </div>
         </div>
       </div>
-    </div>
-    {% endfor %}
-    
-    <!-- Other Stats -->
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card bg-light shadow">
-        <div class="card-body">
-          <h5 class="card-title">إجمالي التقارير</h5>
-          <p class="card-text fs-4">{{ total_reports }}</p>
+
+      <!-- Pipeline Distribution Chart -->
+      <div class="col-lg-6">
+        <div class="chart-card">
+          <div class="chart-title">
+            <i class="fas fa-project-diagram"></i>
+            توزيع الطلبات حسب مسار العمل
+          </div>
+          <div class="chart-container">
+            <canvas id="pipelineChart"></canvas>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card bg-light shadow">
-        <div class="card-body">
-          <h5 class="card-title">تقارير الإنجاز</h5>
-          <p class="card-text fs-4">{{ total_completion_reports }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card bg-light shadow">
-        <div class="card-body">
-          <h5 class="card-title">أوامر الشراء</h5>
-          <p class="card-text fs-4">{{ total_purchase_orders }}</p>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-md-4 col-lg-3">
-      <div class="card bg-light shadow">
-        <div class="card-body">
-          <h5 class="card-title">أوامر المخزون</h5>
-          <p class="card-text fs-4">{{ total_inventory_orders }}</p>
+
+      <!-- Requests Over Time Chart -->
+      <div class="col-12">
+        <div class="chart-card">
+          <div class="chart-title">
+            <i class="fas fa-chart-area"></i>
+            الطلبات خلال آخر 30 يوم
+          </div>
+          <div class="chart-container">
+            <canvas id="timelineChart"></canvas>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Bar Chart for Service Requests by Section and Station -->
-<!-- Include Chart.js -->
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  // Parse the JSON-encoded context variables
-  const sections = JSON.parse('{{ chart_sections|safe }}');
-  const stationNames = JSON.parse('{{ station_names|safe }}');
-  const chartData = JSON.parse('{{ chart_data|safe }}');
-
-  // Generate datasets for each station with their colors
-  const datasets = stationNames.map((stationName, index) => {
-    // Get station color from the data if available, otherwise use defaults
-    const stationColors = {
-      'Pending': 'rgba(255, 206, 86, 0.6)',
-      'In Progress': 'rgba(54, 162, 235, 0.6)',
-      'Under Review': 'rgba(153, 102, 255, 0.6)',
-      'Completed': 'rgba(75, 192, 192, 0.6)'
-    };
-    
-    const color = stationColors[stationName] || `rgba(${Math.floor(Math.random()*200+50)}, ${Math.floor(Math.random()*200+50)}, ${Math.floor(Math.random()*200+50)}, 0.6)`;
-    
-    return {
-      label: stationName,
-      data: chartData[stationName] || [],
-      backgroundColor: color,
-      borderColor: color.replace('0.6', '1'),
-      borderWidth: 1
-    };
-  });
-
-  // Create the bar chart using Chart.js
-  const ctx = document.getElementById('sectionStationChart').getContext('2d');
-  const sectionStationChart = new Chart(ctx, {
-    type: 'bar',
+  // Station Distribution Doughnut Chart
+  const stationCtx = document.getElementById('stationChart').getContext('2d');
+  const stationChart = new Chart(stationCtx, {
+    type: 'doughnut',
     data: {
-      labels: sections,
-      datasets: datasets
+      labels: {{ station_labels|safe }},
+      datasets: [{
+        data: {{ station_data|safe }},
+        backgroundColor: {{ station_colors|safe }},
+        borderWidth: 2,
+        borderColor: '#fff'
+      }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        title: {
-          display: true,
-          text: 'توزيع الطلبات حسب القسم والمحطة'
-        },
         legend: {
-          display: true,
-          position: 'top'
+          position: 'bottom',
+          labels: {
+            font: { size: 12 },
+            padding: 15,
+            usePointStyle: true
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((value / total) * 100).toFixed(1);
+              return ` ${label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Pipeline Distribution Bar Chart
+  const pipelineCtx = document.getElementById('pipelineChart').getContext('2d');
+  const pipelineChart = new Chart(pipelineCtx, {
+    type: 'bar',
+    data: {
+      labels: {{ pipeline_labels|safe }},
+      datasets: [{
+        label: 'عدد الطلبات',
+        data: {{ pipeline_data|safe }},
+        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+        borderColor: 'rgba(102, 126, 234, 1)',
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return ` ${context.parsed.y} طلب`;
+            }
+          }
         }
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: { stepSize: 1 }
+          ticks: { stepSize: 1 },
+          grid: { color: 'rgba(0, 0, 0, 0.05)' }
+        },
+        x: {
+          grid: { display: false }
         }
       }
     }
   });
-</script>
 
-<!-- تضمين Bootstrap JS Bundle مع Popper (إذا لم يتم تضمينه مسبقًا في base.html) -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  // Timeline Area Chart
+  const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+  const timelineChart = new Chart(timelineCtx, {
+    type: 'line',
+    data: {
+      labels: {{ date_labels|safe }},
+      datasets: [{
+        label: 'عدد الطلبات',
+        data: {{ date_data|safe }},
+        fill: true,
+        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+        borderColor: 'rgba(102, 126, 234, 1)',
+        borderWidth: 3,
+        tension: 0.4,
+        pointRadius: 4,
+        pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              return ` ${context.parsed.y} طلب`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { color: 'rgba(0, 0, 0, 0.05)' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      }
+    }
+  });
+</script>
 {% endblock %}

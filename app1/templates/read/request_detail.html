@@ -241,9 +241,9 @@
           هذا الطلب لم يتم تعيين مسار عمل له بعد. الرجاء تحديد المسار المناسب لبدء معالجة الطلب.
         </p>
       </div>
-      <a href="{% url 'assign_pipeline' service_request.id %}" class="btn btn-warning">
+      <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#assignPipelineModal">
         <i class="fas fa-route ms-2"></i>تعيين مسار العمل
-      </a>
+      </button>
     </div>
   </div>
   {% else %}
@@ -257,53 +257,46 @@
         <h3><i class="fas fa-file-invoice ms-2 text-primary"></i> التقارير والطلبات المرتبطة</h3>
         <p class="text-muted small">قم بإنشاء تقارير جديدة أو راجع المتطلبات الحالية.</p>
       </div>
-      {% if not service_request.is_completed %}
-        {% if not reports %}
-          <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reportModal">
-              <i class="fas fa-boxes ms-2"></i> يحتاج مواد
-            </button>
-            {% if not completion_reports %}
-              <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#reportModal1">
-                <i class="fas fa-clipboard-check ms-2"></i> إنجاز دون مواد
-              </button>
-            {% endif %}
-            <button type="button" class="btn btn-outline-warning text-dark" data-bs-toggle="modal" data-bs-target="#reportModal2">
-              <i class="fas fa-globe ms-2"></i> يحتاج خدمة خارجية
-            </button>
-          </div>
-        {% endif %}
-      {% endif %}
     </div>
 
     {% if reports %}
       {% for report in reports %}
         <div class="report-card">
-          <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+        <div class="report-container mb-4 p-4 border rounded shadow-sm bg-light">
+          <!-- Report Header -->
+          <div class="d-flex align-items-center justify-content-between mb-3">
             <div>
-              <h4 class="text-primary mb-2"><i class="fas fa-clipboard-list ms-2"></i>{{ report.title }}</h4>
-              {% if report.description %}
-                <p class="text-muted mb-0">{{ report.description }}</p>
-              {% endif %}
-            </div>
-            <div class="meta">
-              <i class="fas fa-user ms-1 text-secondary"></i>{{ report.created_by }}
-              <span class="mx-2">|</span>
-              <i class="fas fa-clock ms-1 text-secondary"></i>{{ report.created_at }}
+              <h4 class="text-primary mb-1">
+                <i class="fas fa-clipboard-list ms-2"></i>{{ report.title }}
+              </h4>
+              <small class="text-muted">
+                <i class="fas fa-user ms-1"></i> {{ report.created_by.get_full_name|default:report.created_by.username }}
+                <span class="mx-2">•</span>
+                <i class="fas fa-calendar ms-1"></i> {{ report.created_at|date:"Y-m-d H:i" }}
+              </small>
             </div>
           </div>
 
+          <!-- Report Description -->
+          {% if report.description %}
+          <div class="alert alert-light border mb-3" role="alert">
+            <strong><i class="fas fa-align-right ms-2"></i>التفاصيل:</strong>
+            <p class="mb-0 mt-2">{{ report.description }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Report Sub-sections Row -->
           <div class="row g-3">
             <div class="col-md-4">
               <div class="sub-card">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                   <h5 class="text-success mb-0"><i class="fas fa-check-circle ms-2"></i> تقارير الإنجاز</h5>
                   {% if not service_request.is_completed %}
-                    {% if not completion_reports %}
-                      <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#reportModal3">
+                    {% if not completion_reports and can_create_completion_report %}
+                      <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#completionReportModal">
                         <i class="fas fa-plus ms-1"></i> إضافة
                       </button>
-                    {% else %}
+                    {% elif completion_reports and can_edit_completion_report %}
                       <div class="dropdown">
                         <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="completionActions" data-bs-toggle="dropdown" aria-expanded="false">
                           عمليات
@@ -336,7 +329,7 @@
                 <div class="d-flex align-items-center justify-content-between mb-3">
                   <h5 class="text-primary mb-0"><i class="fas fa-shopping-cart ms-2"></i> طلبات الشراء</h5>
                   {% if not service_request.is_completed %}
-                    {% if report.purchase_order %}
+                    {% if report.purchase_order and can_edit_purchase_order %}
                       <div class="dropdown">
                         <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="purchaseActions{{ report.id }}" data-bs-toggle="dropdown" aria-expanded="false">
                           تغيير الحالة
@@ -348,7 +341,7 @@
                           <li><a class="dropdown-item" href="{% url 'edit_purchase_order' report.purchase_order.id %}">تعديل المرجع</a></li>
                         </ul>
                       </div>
-                    {% else %}
+                    {% elif can_create_purchase_order and not report.purchase_order %}
                       <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reportModal4">
                         <i class="fas fa-plus ms-1"></i> إضافة
                       </button>
@@ -371,7 +364,7 @@
                 <div class="d-flex align-items-center justify-content-between mb-3">
                   <h5 class="text-danger mb-0"><i class="fas fa-box ms-2"></i> طلبات المخزون</h5>
                   {% if not service_request.is_completed %}
-                    {% if report.inventory_order %}
+                    {% if report.inventory_order and can_edit_inventory_order %}
                       <div class="dropdown">
                         <button class="btn btn-sm btn-danger dropdown-toggle" type="button" id="inventoryActions{{ report.id }}" data-bs-toggle="dropdown" aria-expanded="false">
                           تغيير الحالة
@@ -382,7 +375,7 @@
                           <li><a class="dropdown-item" href="{% url 'edit_inventory_order' report.inventory_order.id %}">تعديل المرجع</a></li>
                         </ul>
                       </div>
-                    {% else %}
+                    {% elif can_create_inventory_order and not report.inventory_order %}
                       <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal5">
                         <i class="fas fa-plus ms-1"></i> إضافة
                       </button>
@@ -410,27 +403,6 @@
     {% endif %}
   </div>
 
-  {% if reports and not service_request.is_completed %}
-    <div class="operations-card mb-4">
-      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-        <h3 class="mb-0 text-primary"><i class="fas fa-sliders-h ms-2"></i> عمليات سريعة</h3>
-        <p class="text-muted small mb-0">إجراءات إضافية للتحكم في تقدم الطلب.</p>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <!-- Legacy status change buttons - now using station names -->
-        {% if service_request.current_station.name != 'Under Review' %}
-          <a href="{% url 'mark_as_under_review' service_request.id %}" class="btn btn-outline-primary">
-            <i class="fas fa-eye ms-2"></i> تحويل للمراجعة
-          </a>
-        {% endif %}
-        {% if service_request.current_station.name == 'Under Review' %}
-          <a href="{% url 'mark_as_in_progress' service_request.id %}" class="btn btn-outline-success">
-            <i class="fas fa-play ms-2"></i> إعادة لقيد التنفيذ
-          </a>
-        {% endif %}
-      </div>
-    </div>
-  {% endif %}
 
   <div class="section-card">
     <div class="section-title">
@@ -497,71 +469,33 @@
     </div>
   </div>
 
-  <div class="modal fade" id="reportModal1" tabindex="-1" aria-labelledby="reportModal1Label" aria-hidden="true">
+
+  <!-- Completion Report Modal -->
+  <div class="modal fade" id="completionReportModal" tabindex="-1" aria-labelledby="completionReportModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="reportModal1Label">إنشاء تقرير إنجاز</h5>
+          <h5 class="modal-title" id="completionReportModalLabel">إنشاء تقرير إنجاز</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form action="{% url 'create_completion_report' service_request.id %}" method="POST">
             {% csrf_token %}
             <div class="mb-3">
-              <label for="completionDetails" class="form-label">تفاصيل التقرير</label>
-              <textarea class="form-control" name="report_details" id="completionDetails" rows="4" required></textarea>
+              <label for="completionDetails" class="form-label">تفاصيل التقرير <span class="text-danger">*</span></label>
+              <textarea class="form-control" name="report_details" id="completionDetails" rows="4" required placeholder="أدخل تفاصيل تقرير الإنجاز..."></textarea>
+            </div>
+            <div class="alert alert-info small" role="alert">
+              <i class="fas fa-info-circle ms-2"></i>
+              <strong>ملاحظة:</strong> سيتم تلقائياً الانتقال إلى المحطة التالية بعد إنشاء التقرير.
             </div>
             <div class="text-end">
-              <button type="submit" class="btn btn-success">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="reportModal2" tabindex="-1" aria-labelledby="reportModal2Label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-warning">
-          <h5 class="modal-title" id="reportModal2Label">إنشاء تقرير احتياج خدمة خارجية</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form action="{% url 'create_report_out_source' service_request.id %}" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="outSourceDetails" class="form-label">تفاصيل الاحتياج</label>
-              <textarea class="form-control" name="report_details" id="outSourceDetails" rows="4" required></textarea>
-            </div>
-            <div class="text-end">
-              <button type="submit" class="btn btn-warning text-dark">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal fade" id="reportModal3" tabindex="-1" aria-labelledby="reportModal3Label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="reportModal3Label">إضافة تقرير إنجاز</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form action="{% url 'create_completion_report_out_source' service_request.id %}" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="completionOutSource" class="form-label">تفاصيل التقرير</label>
-              <textarea class="form-control" name="report_details" id="completionOutSource" rows="4" required></textarea>
-            </div>
-            <div class="text-end">
-              <button type="submit" class="btn btn-success">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <i class="fas fa-times ms-2"></i>إلغاء
+              </button>
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-check ms-2"></i>تسليم
+              </button>
             </div>
           </form>
         </div>
@@ -616,5 +550,100 @@
       </div>
     </div>
   </div>
+
+  <!-- Assign Pipeline Modal -->
+  <div class="modal fade" id="assignPipelineModal" tabindex="-1" aria-labelledby="assignPipelineModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="assignPipelineModalLabel">
+            <i class="fas fa-route ms-2"></i>تعيين مسار العمل
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="{% url 'assign_pipeline' service_request.id %}" method="POST">
+          {% csrf_token %}
+          <div class="modal-body">
+            <div class="alert alert-info" role="alert">
+              <i class="fas fa-info-circle ms-2"></i>
+              <strong>معلومات الطلب:</strong> {{ service_request.title }}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold">اختر مسار العمل:</label>
+              {% for pipeline in available_pipelines %}
+              <div class="form-check mb-3 p-3 border rounded" style="cursor: pointer;">
+                <input class="form-check-input" type="radio" name="pipeline" id="pipeline{{ pipeline.id }}" value="{{ pipeline.id }}" required>
+                <label class="form-check-label w-100" for="pipeline{{ pipeline.id }}" style="cursor: pointer;">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <h6 class="mb-1">
+                        <i class="fas fa-project-diagram text-primary ms-2"></i>
+                        {{ pipeline.name_ar }}
+                      </h6>
+                      <small class="text-muted">{{ pipeline.name }}</small>
+                      {% if pipeline.description %}
+                        <p class="mb-0 mt-2 text-muted small">{{ pipeline.description }}</p>
+                      {% endif %}
+                    </div>
+                    <span class="badge bg-light text-dark">
+                      {{ pipeline.pipeline_stations.count }} محطة
+                    </span>
+                  </div>
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+
+            <hr>
+
+            <div class="mb-3">
+              <h6 class="fw-bold text-primary">
+                <i class="fas fa-file-alt ms-2"></i>معلومات التقرير المبدئي
+              </h6>
+              <p class="text-muted small">يرجى إدخال معلومات التقرير الأولي لهذا الطلب</p>
+            </div>
+
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="mb-3">
+                  <label for="reportTitle" class="form-label">عنوان التقرير <span class="text-danger">*</span></label>
+                  <input type="text" name="report_title" class="form-control" id="reportTitle" placeholder="مثال: تقرير احتياج مواد" required>
+                </div>
+                <div class="mb-3">
+                  <label for="reportDescription" class="form-label">تفاصيل التقرير <span class="text-danger">*</span></label>
+                  <textarea class="form-control" name="report_description" id="reportDescription" rows="3" placeholder="أدخل تفاصيل التقرير..." required></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times ms-2"></i>إلغاء
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-check ms-2"></i>تعيين المسار وإنشاء التقرير
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Radio button styling enhancement
+    document.querySelectorAll('.form-check-input[type="radio"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        document.querySelectorAll('.form-check').forEach(div => {
+          div.style.borderColor = '#e0e0e0';
+          div.style.backgroundColor = '#fff';
+        });
+        if(this.checked) {
+          this.closest('.form-check').style.borderColor = '#0d6efd';
+          this.closest('.form-check').style.backgroundColor = '#f0f7ff';
+        }
+      });
+    });
+  </script>
 </div>
 {% endblock %}

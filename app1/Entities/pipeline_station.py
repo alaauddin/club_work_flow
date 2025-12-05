@@ -17,6 +17,14 @@ class PipelineStation(models.Model):
         help_text='Required role to approve/move from this station'
     )
 
+    can_create_purchase_order = models.BooleanField(default=False, help_text='Can this station create a purchase order?')
+    can_create_inventory_order = models.BooleanField(default=False, help_text='Can this station create an inventory order?')
+    can_create_completion_report = models.BooleanField(default=False, help_text='Can this station create a completion report?')
+    can_send_back = models.BooleanField(default=False, help_text='Can this station send the request back to the previous station?')
+    can_edit_completion_report = models.BooleanField(default=False, help_text='Can this station edit the completion report?')
+    can_edit_purchase_order = models.BooleanField(default=False, help_text='Can this station edit the purchase order?')
+    can_edit_inventory_order = models.BooleanField(default=False, help_text='Can this station edit the inventory order?')
+    
     class Meta:
         ordering = ['pipeline', 'order']
         unique_together = [['pipeline', 'station'], ['pipeline', 'order']]

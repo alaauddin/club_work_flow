@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_POST
 from django.core.serializers import serialize
 from django.utils.dateformat import format as date_format
+from django.contrib.auth.models import User
 
 from app1.forms import CompletionReportForm, InventoryOrderForm, PurchaseOrderForm, ServiceRequestLogForm
 from .models import *
@@ -13,7 +14,10 @@ from .models import *
 import json
 import threading
 import requests
+import logging
+from django.contrib.auth.decorators import login_required
 
+logger = logging.getLogger(__name__)
 
 def send_message(number, message):
     def send():
@@ -55,71 +59,72 @@ def get_station_by_name(name):
     except Station.DoesNotExist:
         return None
 
-
-# ============================================================================
-# DASHBOARD & LISTINGS
-# ============================================================================
-
+@login_required
 def home(request):
-    # Count Service Requests by current station instead of status
+    """Analytics dashboard with statistics and charts"""
+    
+    # Overall statistics
     total_requests = ServiceRequest.objects.count()
+    my_requests_count = ServiceRequest.objects.filter(created_by=request.user).count()
+    requests_to_me_count = ServiceRequest.objects.filter(assigned_to=request.user).count()
+    requests_without_pipeline = ServiceRequest.objects.filter(pipeline__isnull=True).count()
     
-    # Get station-based counts
-    station_counts = {}
+    # Station-based statistics
     stations = Station.objects.all().order_by('order')
+    station_data = []
+    station_labels = []
+    station_colors = []
     
-    # Annotate each station with its request count
-    from django.db.models import Count
-    stations_with_counts = []
     for station in stations:
         count = ServiceRequest.objects.filter(current_station=station).count()
-        station.request_count = count  # Add as attribute
-        stations_with_counts.append(station)
-        station_counts[station.name.lower().replace(' ', '_')] = count
+        if count > 0:  # Only include stations with requests
+            station_labels.append(station.name_ar)
+            station_data.append(count)
+            station_colors.append(station.color)
     
-    # Count Reports and related objects
-    total_reports = Report.objects.count()
-    total_completion_reports = CompletionReport.objects.count()
-    total_purchase_orders = PurchaseOrder.objects.count()
-    total_inventory_orders = InventoryOrder.objects.count()
-
-    # Chart Data - Aggregate counts for each section and station
-    section_station_data = ServiceRequest.objects.values(
-        'section__name', 'current_station__name'
-    ).annotate(count=Count('id'))
+    # Pipeline statistics
+    from django.db.models import Count
+    pipeline_stats = ServiceRequest.objects.filter(
+        pipeline__isnull=False
+    ).values('pipeline__name_ar').annotate(count=Count('id')).order_by('-count')
     
-    # Get all section names
-    sections = list(Section.objects.values_list('name', flat=True))
+    pipeline_labels = [p['pipeline__name_ar'] for p in pipeline_stats]
+    pipeline_data = [p['count'] for p in pipeline_stats]
     
-    # Get all station names for the chart
-    station_names = list(stations.values_list('name', flat=True))
+    # Requests over time (last 30 days)
+    from datetime import datetime, timedelta
+    from django.db.models.functions import TruncDate
     
-    # Initialize chart data dictionary
-    chart_data = {station.name: [0] * len(sections) for station in stations}
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    daily_requests = ServiceRequest.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).annotate(date=TruncDate('created_at')).values('date').annotate(
+        count=Count('id')
+    ).order_by('date')
     
-    # Create a mapping for section name to its index
-    section_index = {name: i for i, name in enumerate(sections)}
+    # Create date labels for last 30 days
+    date_labels = []
+    date_data = []
+    for i in range(30):
+        date = (datetime.now() - timedelta(days=29-i)).date()
+        date_labels.append(date.strftime('%m/%d'))
+        # Find count for this date
+        count = next((d['count'] for d in daily_requests if d['date'] == date), 0)
+        date_data.append(count)
     
-    # Populate chart_data with the counts
-    for entry in section_station_data:
-        section_name = entry['section__name']
-        station_name = entry['current_station__name']
-        if section_name in section_index and station_name:
-            idx = section_index[section_name]
-            chart_data[station_name][idx] = entry['count']
-
     context = {
         'total_requests': total_requests,
-        'station_counts': station_counts,
-        'stations': stations_with_counts,  # Use annotated stations
-        'total_reports': total_reports,
-        'total_completion_reports': total_completion_reports,
-        'total_purchase_orders': total_purchase_orders,
-        'total_inventory_orders': total_inventory_orders,
+        'my_requests_count': my_requests_count,
+        'requests_to_me_count': requests_to_me_count,
+        'requests_without_pipeline': requests_without_pipeline,
         # Chart data
-        'chart_sections': json.dumps(sections),
-        'chart_data': json.dumps(chart_data),
-        'station_names': json.dumps(station_names),
+        'station_labels': json.dumps(station_labels),
+        'station_data': json.dumps(station_data),
+        'station_colors': json.dumps(station_colors),
+        'pipeline_labels': json.dumps(pipeline_labels),
+        'pipeline_data': json.dumps(pipeline_data),
+        'date_labels': json.dumps(date_labels),
+        'date_data': json.dumps(date_data),
     }
 
     return render(request, 'read/home.html', context)
@@ -154,13 +159,88 @@ def my_request(request):
     return render(request, 'read/my_request.html', context)
 
 
+def my_stations(request):
+    """Show stations the user has access to"""
+    
+    # Get stations the user is allowed to access
+    if request.user.is_authenticated:
+        # Show stations where user is in allowed_users OR where allowed_users is empty (unrestricted)
+        allowed_stations = Station.objects.filter(
+            Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
+        ).distinct().order_by('order')
+    else:
+        allowed_stations = Station.objects.filter(allowed_users__isnull=True).distinct().order_by('order')
+    
+    # Add request count for each station
+    stations_with_counts = []
+    for station in allowed_stations:
+        request_count = ServiceRequest.objects.filter(current_station=station).count()
+        stations_with_counts.append({
+            'station': station,
+            'count': request_count,
+            'is_special': False
+        })
+    
+    # Add special card for requests without pipeline (SP_ADMIN only)
+    is_sp_admin = request.user.groups.filter(name='SP_ADMIN').exists()
+    if is_sp_admin:
+        unassigned_count = ServiceRequest.objects.filter(pipeline__isnull=True).count()
+        # Create a pseudo-station object for unassigned requests
+        stations_with_counts.insert(0, {
+            'station': None,
+            'count': unassigned_count,
+            'is_special': True,
+            'special_type': 'unassigned_pipeline',
+            'name_ar': 'طلبات بدون مسار عمل',
+            'color': '#f59e0b',  # Warning orange color
+            'description': 'الطلبات التي لم يتم تعيين مسار عمل لها'
+        })
+    
+    context = {
+        'stations_with_counts': stations_with_counts,
+        'is_sp_admin': is_sp_admin,
+    }
+    return render(request, 'read/my_stations.html', context)
+
+
 def requests_to_me(request):
     service_providers = ServiceProvider.objects.filter(manager=request.user)
     filter_type = request.GET.get('filter', 'all')
     assigned_user_id = request.GET.get('assigned_to', '').strip()
+    station_filter = request.GET.get('station', '')  # Station ID filter
+    no_pipeline_filter = request.GET.get('no_pipeline', '')  # No pipeline filter
+
+    # Get stations the user is allowed to access
+    if request.user.is_authenticated:
+        # Show stations where user is in allowed_users OR where allowed_users is empty
+        allowed_stations = Station.objects.filter(
+            Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
+        ).distinct().order_by('order')
+    else:
+        # For anonymous users, show no restricted stations
+        allowed_stations = Station.objects.filter(allowed_users__isnull=True).distinct().order_by('order')
+    
+    # Get all stations for admin/display purposes
+    all_stations = Station.objects.all().order_by('order')
 
     service_requests = ServiceRequest.objects.filter(service_provider__in=service_providers)
 
+    # Filter by no pipeline if requested
+    if no_pipeline_filter == 'true':
+        service_requests = service_requests.filter(pipeline__isnull=True)
+    # Filter by station if selected
+    elif station_filter:
+        try:
+            selected_station = Station.objects.get(id=station_filter)
+            # Check if user can access this station
+            if selected_station in allowed_stations:
+                service_requests = service_requests.filter(current_station=selected_station)
+            else:
+                messages.warning(request, 'ليس لديك صلاحية للوصول إلى هذه المحطة')
+        except Station.DoesNotExist:
+            pass
+    
+    # Legacy filters
     if filter_type == 'supplied':
         service_requests = service_requests.filter(
             reports__purchase_order__status='supplied'
@@ -168,9 +248,9 @@ def requests_to_me(request):
     elif filter_type == 'assigned_to_me':
         service_requests = service_requests.filter(assigned_to=request.user)
     elif filter_type != 'all':
-        # Try to filter by station name
+        # Try to filter by station name (legacy support)
         station = get_station_by_name(filter_type.replace('_', ' ').title())
-        if station:
+        if station and station in allowed_stations:
             service_requests = service_requests.filter(current_station=station)
 
     if assigned_user_id == 'unassigned':
@@ -179,16 +259,13 @@ def requests_to_me(request):
         service_requests = service_requests.filter(assigned_to_id=assigned_user_id)
     
     service_requests = service_requests.order_by('-id').distinct()
-
-    # Get all stations for filter options
-    stations = Station.objects.all().order_by('order')
     
     filter_options = [
         {'key': 'all', 'label': 'كل الطلبات', 'icon': 'list'},
     ]
     
-    # Add station-based filters
-    for station in stations:
+    # Add station-based filters (only for allowed stations)
+    for station in allowed_stations:
         filter_options.append({
             'key': station.name.lower().replace(' ', '_'),
             'label': station.name_ar,
@@ -196,6 +273,7 @@ def requests_to_me(request):
         })
     
     filter_options.extend([
+
         {'key': 'supplied', 'label': 'طلبات مشتريات موردة', 'icon': 'check'},
         {'key': 'assigned_to_me', 'label': 'طلبات مسندة إليّ', 'icon': 'user-check'},
     ])
@@ -210,7 +288,9 @@ def requests_to_me(request):
         'filter_options': filter_options,
         'assigned_users': assigned_users,
         'assigned_user_id': assigned_user_id,
-        'stations': stations,
+        'stations': all_stations,
+        'allowed_stations': allowed_stations,
+        'selected_station': station_filter,
     }
     return render(request, 'read/requests_to_me.html', context)
 
@@ -272,6 +352,31 @@ def request_detail(request, id):
     # Get available pipelines for assignment
     available_pipelines = Pipeline.objects.filter(is_active=True)
     
+    # Get current station permissions for creating orders/reports
+    can_create_purchase = False
+    can_create_inventory = False
+    can_create_completion = False
+    can_send_back = False
+    can_edit_completion = False
+    can_edit_purchase = False
+    can_edit_inventory = False
+    
+    if service_request.pipeline and service_request.current_station:
+        try:
+            current_pipeline_station = PipelineStation.objects.get(
+                pipeline=service_request.pipeline,
+                station=service_request.current_station
+            )
+            can_create_purchase = current_pipeline_station.can_create_purchase_order
+            can_create_inventory = current_pipeline_station.can_create_inventory_order
+            can_create_completion = current_pipeline_station.can_create_completion_report
+            can_send_back = current_pipeline_station.can_send_back
+            can_edit_completion = current_pipeline_station.can_edit_completion_report
+            can_edit_purchase = current_pipeline_station.can_edit_purchase_order
+            can_edit_inventory = current_pipeline_station.can_edit_inventory_order
+        except PipelineStation.DoesNotExist:
+            pass
+    
     context = {
         'service_request': service_request,
         'service_request_logs': service_request_logs,
@@ -285,6 +390,14 @@ def request_detail(request, id):
         'progress': service_request.get_pipeline_progress() if service_request.pipeline else 0,
         'is_completed': service_request.is_completed() if service_request.pipeline else False,
         'available_pipelines': available_pipelines,
+        # Station permissions
+        'can_create_purchase_order': can_create_purchase,
+        'can_create_inventory_order': can_create_inventory,
+        'can_create_completion_report': can_create_completion,
+        'can_send_back': can_send_back,
+        'can_edit_completion_report': can_edit_completion,
+        'can_edit_purchase_order': can_edit_purchase,
+        'can_edit_inventory_order': can_edit_inventory,
     }
     return render(request, 'read/request_detail.html', context)
 
@@ -405,12 +518,60 @@ def move_to_station_view(request, id, station_id):
     return render(request, 'write/move_to_station.html', context)
 
 
+def send_back_to_previous(request, id):
+    """Send service request back to previous station"""
+    service_request = ServiceRequest.objects.get(id=id)
+    previous_station = service_request.get_previous_station()
+    
+    if not previous_station:
+        messages.error(request, 'لا توجد محطة سابقة للعودة إليها')
+        return redirect('request_detail', id=id)
+    
+    # Check if current station allows sending back
+    can_send_back = False
+    if service_request.pipeline and service_request.current_station:
+        try:
+            current_pipeline_station = PipelineStation.objects.get(
+                pipeline=service_request.pipeline,
+                station=service_request.current_station
+            )
+            can_send_back = current_pipeline_station.can_send_back
+        except PipelineStation.DoesNotExist:
+            pass
+    
+    if not can_send_back:
+        messages.error(request, 'هذه المحطة لا تسمح بإرجاع الطلبات')
+        return redirect('request_detail', id=id)
+    
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        
+        success, message = service_request.move_to_station(
+            station=previous_station,
+            user=request.user,
+            comment=f'تم إرجاع الطلب للمحطة السابقة - السبب: {reason}'
+        )
+        
+        if success:
+            messages.success(request, f'تم إرجاع الطلب إلى {previous_station.name_ar}')
+        else:
+            messages.error(request, message)
+        
+        return redirect('request_detail', id=id)
+    
+    context = {
+        'service_request': service_request,
+        'previous_station': previous_station,
+    }
+    return render(request, 'write/send_back.html', context)
+
+
 # ============================================================================
 # PIPELINE ASSIGNMENT
 # ============================================================================
 
 def assign_pipeline(request, id):
-    """Assign a pipeline to a service request"""
+    """Assign a pipeline to a service request and optionally create an initial report"""
     service_request = ServiceRequest.objects.get(id=id)
     
     # Only allow if no pipeline assigned yet
@@ -443,19 +604,40 @@ def assign_pipeline(request, id):
                 created_by=request.user
             )
             
-            messages.success(request, f'تم تعيين مسار العمل: {pipeline.name_ar} بنجاح')
+            # Report creation is now MANDATORY
+            report_title = request.POST.get('report_title', '').strip()
+            report_description = request.POST.get('report_description', '').strip()
+            
+            if not report_title or not report_description:
+                messages.error(request, 'الرجاء إدخال عنوان وتفاصيل التقرير')
+                return redirect('request_detail', id=id)
+            
+            # Create the mandatory report
+            report = Report.objects.create(
+                service_request=service_request,
+                title=report_title,
+                description=report_description,
+                needs_outsourcing=False,
+                needs_items=False,
+                created_by=request.user
+            )
+            
+            # Log report creation
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                log_type='update',
+                comment=f'تم إنشاء تقرير مبدئي: {report_title}',
+                created_by=request.user
+            )
+            
+            messages.success(request, f'تم تعيين مسار العمل و إنشاء التقرير بنجاح')
             return redirect('request_detail', id=id)
         else:
             messages.error(request, 'الرجاء اختيار مسار عمل')
             return redirect('request_detail', id=id)
     
-    # GET request - show pipeline selection
-    pipelines = Pipeline.objects.filter(is_active=True)
-    context = {
-        'service_request': service_request,
-        'pipelines': pipelines,
-    }
-    return render(request, 'write/assign_pipeline.html', context)
+    # GET request - redirect to request_detail (modal handles the UI)
+    return redirect('request_detail', id=id)
 
 
 # ============================================================================
@@ -611,23 +793,31 @@ def create_report(request, id):
 
 def create_completion_report(request, id):
     if request.method == 'POST':
+        logger.info(f'Creating completion report for service request {id} by user {request.user}')
         service_request = ServiceRequest.objects.get(id=id)
         report_details = request.POST.get('report_details')
         reports = Report.objects.filter(service_request=service_request)
         
+        logger.info(f'Service request current station: {service_request.current_station}')
+        logger.info(f'Pipeline: {service_request.pipeline}')
+        
         if not reports:
+            logger.info('No existing report found, creating new report')
             report = Report.objects.create(
                 service_request=service_request,
                 title='تقرير إنجاز',
                 created_by=request.user
             )    
+        else:
+            logger.info(f'Found {reports.count()} existing reports')
         
-        CompletionReport.objects.create(
+        completion_report = CompletionReport.objects.create(
             service_request=service_request,
             title='تقرير إنجاز',
             description=report_details,
             created_by=request.user
         )
+        logger.info(f'Completion report created with ID: {completion_report.id}')
         
         # Log completion report
         ServiceRequestLog.objects.create(
@@ -637,86 +827,34 @@ def create_completion_report(request, id):
             created_by=request.user
         )
         
-        # Move to "Under Review" station if exists
-        under_review = get_station_by_name('Under Review')
-        if under_review and service_request.current_station != under_review:
-            success, msg = service_request.move_to_station(
-                station=under_review,
+        # Automatically move to next station
+        next_station = service_request.get_next_station()
+        logger.info(f'Next station: {next_station}')
+        
+        if next_station:
+            logger.info(f'Attempting to move to next station: {next_station.name}')
+            success, msg = service_request.move_to_next_station(
                 user=request.user,
-                comment='تم إنشاء تقرير الإنجاز - جاهز للمراجعة'
+                comment='تم إنشاء تقرير الإنجاز - الانتقال للمحطة التالية'
             )
+            logger.info(f'Move to next station result - Success: {success}, Message: {msg}')
             
             if success:
-                user_to_alert_phone = service_request.created_by.profile.phone
-                message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اكمال طلبك بنجاح\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
-                send_message(user_to_alert_phone, message)
-        
-        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
-        return redirect('request_detail', id=id)
-
-
-def create_report_out_source(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report_details = request.POST.get('report_details')
-        reports = Report.objects.filter(service_request=service_request)
-        
-        if not reports:
-            report = Report.objects.create(
-                service_request=service_request,
-                title='تقرير احتياج خدمة خارجية',
-                created_by=request.user,
-                description=report_details
-            )    
-
-            ServiceRequestLog.objects.create(
-                service_request=service_request,
-                log_type='update',
-                comment='تم انشاء تقرير احتياج خدمة خارجية',
-                created_by=request.user
-            )
-            
-            # Move to "In Progress" if not already there
-            in_progress = get_station_by_name('In Progress')
-            if in_progress and service_request.current_station != in_progress:
-                service_request.move_to_station(
-                    station=in_progress,
-                    user=request.user,
-                    comment='احتياج خدمة خارجية - قيد العمل'
-                )
-            
-            messages.success(request, 'تم إنشاء تقرير بنجاح')
-            return redirect('request_detail', id=id)
+                logger.info(f'Successfully moved to {service_request.current_station.name}')
+                # Send notification if moved to final station
+                if service_request.is_completed():
+                    logger.info('Service request is now completed, sending notification')
+                    user_to_alert_phone = service_request.created_by.profile.phone
+                    message = f'*نظام صيانة النادي الترفيهي الرياضي*\nتم اكمال طلبك بنجاح\nعنوان طلبك كان: {service_request.title}\nتفاصيل الطلب: {service_request.description}'
+                    send_message(user_to_alert_phone, message)
+                    logger.info(f'Notification sent to {user_to_alert_phone}')
+            else:
+                logger.warning(f'Failed to move to next station: {msg}')
         else:
-            messages.error(request, 'تم إنشاء تقرير بالفعل')
-            return redirect('request_detail', id=id)
-
-
-def create_completion_report_out_source(request, id):
-    if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        reports = Report.objects.filter(service_request=service_request)
-        report_details = request.POST.get('report_details')
+            logger.warning('No next station available in pipeline')
         
-        if not reports:
-            messages.error(request, "حصل خطاء ما")
-            return redirect('request_detail', id=id)
-        
-        CompletionReport.objects.create(
-            service_request=service_request,
-            title='تقرير إنجاز لعمل خارجي',
-            description=report_details,
-            created_by=request.user
-        )
-        
-        ServiceRequestLog.objects.create(
-            service_request=service_request,
-            log_type='update',
-            comment='تم إنشاء تقرير إنجاز لعمل خارجي',
-            created_by=request.user
-        )
-        
-        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح')
+        messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح والانتقال للمحطة التالية')
+        logger.info(f'Completion report workflow completed for request {id}')
         return redirect('request_detail', id=id)
 
 

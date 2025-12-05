@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+  .send-back-wrapper { background-color: #f5f7fb; min-height: 100vh; }
+  .send-back-card {
+    background: #fff;
+    border-radius: 1.5rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(220, 53, 69, 0.1);
+    padding: 2rem;
+    max-width: 700px;
+    margin: 2rem auto;
+  }
+</style>
+
+<div class="container send-back-wrapper" dir="rtl">
+  <div class="row justify-content-center">
+    <div class="col-12">
+      <div class="send-back-card">
+        <div class="text-center mb-4">
+          <i class="fas fa-undo fa-3x text-danger mb-3"></i>
+          <h2 class="fw-bold">إرجاع الطلب للمحطة السابقة</h2>
+          <p class="text-muted">أدخل سبب الإرجاع</p>
+        </div>
+
+        <div class="alert alert-warning" role="alert">
+          <i class="fas fa-info-circle ms-2"></i>
+          <strong>الطلب:</strong> {{ service_request.title }}<br>
+          <strong>المحطة الحالية:</strong> {{ service_request.current_station.name_ar }}<br>
+          <strong>سيتم الإرجاع إلى:</strong> {{ previous_station.name_ar }}
+        </div>
+
+        <form method="POST">
+          {% csrf_token %}
+          
+          <div class="mb-4">
+            <label for="reason" class="form-label fw-bold">سبب الإرجاع <span class="text-danger">*</span></label>
+            <textarea class="form-control" name="reason" id="reason" rows="4" required placeholder="مثال: يوجد نقص في المعلومات..."></textarea>
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="{% url 'request_detail' service_request.id %}" class="btn btn-outline-secondary">
+              <i class="fas fa-times ms-2"></i>إلغاء
+            </a>
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-undo ms-2"></i>إرجاع الطلب
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
