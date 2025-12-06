@@ -1,382 +1,715 @@
 {% extends 'base.html' %}
 
-{% block title %}طلبات الأقسام الخاصة بي{% endblock %}
-
-{% block extra_head %}
-  <!-- Optimized Assets -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
-  
-  <style>
-    :root {
-      --primary-gradient: linear-gradient(135deg, #001f3f, #003366, #004080);
-      --glass-bg: rgba(255, 255, 255, 0.1);
-      --glass-border: rgba(255, 255, 255, 0.18);
-    }
-
-    body {
-      background: var(--primary-gradient);
-      color: #fefefe;
-      font-family: 'Poppins', sans-serif;
-      min-height: 100vh;
-      position: relative;
-    }
-
-    /* Parallax Background Layers */
-    body::before,
-    body::after {
-      content: '';
-      position: fixed;
-      width: 150vw;
-      height: 150vh;
-      background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 60%);
-      transform: translate(-50%, -50%);
-      z-index: -1;
-      animation: float 20s infinite linear;
-    }
-
-    body::after {
-      animation-delay: -10s;
-      opacity: 0.5;
-    }
-
-    @keyframes float {
-      0% { transform: translate(-50%, -50%) rotate(0deg); }
-      100% { transform: translate(-50%, -50%) rotate(360deg); }
-    }
-
-    .glass-card {
-      background: var(--glass-bg);
-      backdrop-filter: blur(12px) saturate(180%);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-      border: 1px solid var(--glass-border);
-      padding: 30px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .glass-card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-      transform: rotate(45deg);
-      pointer-events: none;
-      transition: 0.5s;
-    }
-
-    .glass-card:hover::before {
-      animation: glassGlow 3s linear infinite;
-    }
-
-    @keyframes glassGlow {
-      0% { transform: rotate(45deg) translate(-50%, -50%); }
-      100% { transform: rotate(45deg) translate(50%, 50%); }
-    }
-
-    /* Enhanced Filter Buttons */
-    .filter-btns .btn {
-      position: relative;
-      overflow: hidden;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      border-width: 2px;
-      backdrop-filter: blur(8px);
-    }
-
-    .filter-btns .btn.active {
-      background: rgba(255,255,255,0.9) !important;
-      color: #004080 !important;
-      box-shadow: 0 0 20px rgba(255,255,255,0.3);
-      transform: translateY(-2px);
-    }
-
-    /* Modern Table Design */
-    .table-hover tbody tr {
-      transition: all 0.3s ease;
-      position: relative;
-    }
-
-    .table-hover tbody tr:hover {
-      background: rgba(255,255,255,0.08) !important;
-    }
-
-    .table-hover tbody tr::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 50%;
-      width: 95%;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      transform: translateX(-50%);
-    }
-
-    /* Responsive Cards for Mobile */
-    @media (max-width: 768px) {
-      .table-responsive {
-        display: none;
-      }
-
-      .mobile-cards {
-        display: block;
-      }
-
-      .request-card {
-        background: rgba(255,255,255,0.05);
-        border-radius: 15px;
-        padding: 15px;
-        margin-bottom: 15px;
-        backdrop-filter: blur(8px);
-        transition: transform 0.3s ease;
-      }
-
-      .request-card:hover {
-        transform: translateY(-3px);
-      }
-    }
-
-    /* Enhanced Badges */
-    .badge {
-      position: relative;
-      overflow: hidden;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      padding: 8px 16px;
-      border-radius: 10px;
-      transition: all 0.3s ease;
-    }
-
-    .badge::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    .badge:hover::before {
-      opacity: 1;
-    }
-
-    /* Animated Empty State */
-    .empty-state {
-      animation: floatUp 1s ease;
-      opacity: 0;
-      animation-fill-mode: forwards;
-    }
-
-    @keyframes floatUp {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    /* Scroll Progress Indicator */
-    .scroll-progress {
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #00b4d8, #0077b6);
-      z-index: 9999;
-      transition: width 0.3s ease-out;
-    }
-  </style>
-{% endblock %}
+{% block title %}طلباتي - نظام إدارة الطلبات{% endblock %}
 
 {% block content %}
-<div class="scroll-progress" id="scrollProgress"></div>
+<style>
+  :root {
+    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --gradient-card: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.16);
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+  }
 
-<div class="container my-5" dir="rtl">
-  <div class="text-center mb-5">
-    <h1 class="fw-bold display-5 mb-3">
-      <i class="fas fa-clipboard-list me-2"></i>طلبات الخدمات الموجهة لي
-    </h1>
-    <p class="fs-5 text-dark opacity-85">
-      <i class="fas fa-lightbulb me-2"></i>إدارة الطلبات الواردة للقسم الخدمي الخاص بك
-    </p>
+  body {
+    background: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  /* Hero Section */
+  .page-hero {
+    background: var(--gradient-primary);
+    color: white;
+    padding: clamp(2rem, 5vw, 3rem) 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .page-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.05)"/></svg>');
+    background-size: 100px;
+    opacity: 0.3;
+  }
+
+  .page-hero h1 {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+
+  .page-hero p {
+    font-size: clamp(0.9rem, 2vw, 1.1rem);
+    opacity: 0.9;
+  }
+
+  /* Stats Cards */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e2e8f0;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+  }
+
+  /* Search and Filter Bar */
+  .control-bar {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 1.5rem;
+    border: 1px solid #e2e8f0;
+  }
+
+  .search-box {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+  }
+
+  .search-box input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+
+  .search-box i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+  }
+
+  /* Filter Pills */
+  .filter-pills {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-pill {
+    padding: 0.5rem 1.25rem;
+    border-radius: 100px;
+    border: 2px solid #e2e8f0;
+    background: white;
+    color: #475569;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .filter-pill:hover {
+    border-color: #667eea;
+    color: #667eea;
+    transform: translateY(-2px);
+  }
+
+  .filter-pill.active {
+    background: var(--gradient-primary);
+    border-color: #667eea;
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  /* Request Cards */
+  .requests-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .request-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .request-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--gradient-primary);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+  }
+
+  .request-card:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .request-card:hover::before {
+    transform: scaleY(1);
+  }
+
+  .request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+
+  .request-id {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+    color: #667eea;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.875rem;
+  }
+
+  .request-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+  }
+
+  .request-description {
+    color: #64748b;
+    fontSize: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .request-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+  }
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+
+  .meta-item i {
+    color: #94a3b8;
+    width: 16px;
+  }
+
+  /* Status Badges */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 100px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .status-pending {
+    background: #fef3c7;
+    color: #92400e;
+  }
+
+  .status-in-progress {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  .status-completed {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  .status-review {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
+  /* Action Buttons */
+  .action-btns {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .btn-action {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary-action {
+    background: var(--gradient-primary);
+    color: white;
+  }
+
+  .btn-primary-action:hover {
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+    color: white;
+  }
+
+  .btn-secondary-action {
+    background: #f1f5f9;
+    color: #475569;
+  }
+
+  .btn-secondary-action:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .empty-state-icon {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .empty-state-icon i {
+    font-size: 3rem;
+    color: #667eea;
+  }
+
+  /* Dropdown Select */
+  .custom-select {
+    padding: 0.625rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    color: #475569;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .custom-select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+
+  /* Progress Bar */
+  .progress-bar-custom {
+    height: 6px;
+    background: #f1f5f9;
+    border-radius: 100px;
+    overflow: hidden;
+    margin-top: 0.75rem;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--gradient-primary);
+    border-radius: 100px;
+    transition: width 0.5s ease;
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    .page-hero {
+      padding: 1.5rem 0;
+    }
+
+    .stats-row {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+    }
+
+    .stat-card {
+      padding: 1rem;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+    }
+
+    .control-bar {
+      padding: 1rem;
+    }
+
+    .search-box {
+      max-width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .filter-pills {
+      gap: 0.5rem;
+    }
+
+    .filter-pill {
+      font-size: 0.8125rem;
+      padding: 0.4rem 1rem;
+    }
+
+    .request-card {
+      padding: 1rem;
+    }
+
+    .request-header {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .request-meta {
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+  }
+
+  /* Loading Animation */
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+
+  .loading-placeholder {
+    animation: shimmer 2s infinite;
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 1000px 100%;
+  }
+</style>
+
+<div class="page-hero">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h1>
+          <i class="fas fa-inbox me-2"></i>
+          الطلبات الموجهة لي
+        </h1>
+        <p class="mb-0">إدارة ومتابعة جميع الطلبات المخصصة لك</p>
+      </div>
+      <div>
+        <a href="{% url 'create_service_request' %}" class="btn btn-light px-4">
+          <i class="fas fa-plus me-2"></i>
+          طلب جديد
+        </a>
+      </div>
+    </div>
   </div>
+</div>
 
-  <div class="mb-4 text-center filter-btns">
-    {% for option in filter_options %}
-      <a href="?filter={{ option.key }}{% if assigned_user_id %}&assigned_to={{ assigned_user_id }}{% endif %}" 
-         class="btn btn-outline-dark rounded-pill px-4 m-2 {% if filter == option.key %}active{% endif %}"
-         aria-current="{% if filter == option.key %}page{% else %}false{% endif %}">
-        <i class="fas fa-{{ option.icon }} me-2"></i>
-        {{ option.label }}
-      </a>
-    {% endfor %}
-  </div>
-
-  <div class="btn btn-dark rounded-pill px-4 m-2">
-    <form method="get" class="d-flex flex-wrap align-items-center gap-2 glass-card px-3 py-2">
-      <input type="hidden" name="filter" value="{{ filter|default:'all' }}">
-      <label for="assignedFilter" class="mb-0 fw-semibold text-uppercase small text-light">
-        <i class="fas fa-user-filter me-2"></i>تصفية حسب المسؤول
-      </label>
-      <select id="assignedFilter" name="assigned_to" style="border-radius:20px;" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-        <option value="" {% if not assigned_user_id %}selected{% endif %}>كل المسؤولين</option>
-        <option value="unassigned" {% if assigned_user_id == 'unassigned' %}selected{% endif %}>غير معيّن</option>
-        {% for user in assigned_users %}
-          <option value="{{ user.id }}" {% if assigned_user_id == user.id|stringformat:'s' %}selected{% endif %}>
-            {{ user.get_full_name|default:user.username }}
-          </option>
-        {% endfor %}
-      </select>
-    </form>
-    {% if assigned_user_id %}
-      <a href="?filter={{ filter|default:'all' }}" class="btn btn-link text-light text-decoration-none">
-        <i class="fas fa-times me-1"></i>إزالة التصفية
-      </a>
-    {% endif %}
-  </div>
-
-  <div class="glass-card">
-    <div class="d-flex align-items-center mb-4">
-      <h2 class="h3 mb-0">
-        <i class="fas fa-scroll me-3"></i>قائمة الطلبات
-      </h2>
-      <span class="badge bg-light text-dark ms-auto">
-        العدد الإجمالي: {{ service_requests.count }}
-      </span>
+<div class="container" dir="rtl">
+  <!-- Statistics Overview -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-value">{{ service_requests.count }}</div>
+      <div class="stat-label">
+        <i class="fas fa-list me-1"></i>
+        إجمالي الطلبات
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ pending_count }}
+      </div>
+      <div class="stat-label">
+        <i class="fas fa-clock me-1"></i>
+        قيد الانتظار
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ in_progress_count }}
+      </div>
+      <div class="stat-label">
+        <i class="fas fa-spinner me-1"></i>
+        قيد التنفيذ
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">
+        {{ completed_count }}
+      </div>
+      <div class="stat-label">
+        <i class="fas fa-check-circle me-1"></i>
+        مكتملة
+      </div>
     </div>
 
-    {% if service_requests %}
-      <div class="table-responsive d-none d-md-block">
-        <table class="table table-hover align-middle">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>العنوان</th>
-              <th>الوصف</th>
-              <th>القسم</th>
-              <th>الحالة</th>
-              <th>المسؤول</th>
-              <th>التاريخ</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for request in service_requests %}
-              <tr onclick="window.location.href='{% url 'request_detail' request.id %}'" style="cursor: pointer;">
-              <td class="fw-bold text-info">#{{ request.id }}</td>
-              <td class="text-nowrap">{{ request.title }}</td>
-              <td class="text-truncate" style="max-width: 250px;" title="{{ request.description }}">
-                {{ request.description }}
-              </td>
-              <td>{{ request.section.name }}</td>
-              <td>
-                {% if request.status == 'pending' %}
-                  <span class="badge bg-warning"><i class="fas fa-hourglass-half"></i> قيد الانتظار</span>
-                {% elif request.status == 'in_progress' %}
-                  <span class="badge bg-info text-dark"><i class="fas fa-spinner"></i> قيد التنفيذ</span>
-                {% elif request.status == 'completed' %}
-                  <span class="badge bg-success"><i class="fas fa-check-circle"></i> مكتمل</span>
-                {% elif request.status == 'under_review' %}
-                  <span class="badge bg-primary"><i class="fas fa-eye"></i> قيد المراجعة</span>
-                {% else %}
-                  <span class="badge bg-light text-dark">{{ request.status }}</span>
-                {% endif %}
-              </td>
-              <td>
-                {% if request.assigned_to %}
-                  {{ request.assigned_to.get_full_name|default:request.assigned_to.username }}
-                {% else %}
-                  غير معيّن
-                {% endif %}
-              </td>
-              <td class="text-nowrap">{{ request.created_at|date:"Y-m-d H:i" }}</td>
-              <td>
-                <!-- Button that doesn't trigger the row click -->
-                <a href="{% url 'print_request' request.id %}" class="btn btn-sm btn-outline-primary"
-                   onclick="event.stopPropagation();">
-                  <i class="fas fa-print me-1" aria-hidden="true" style="font-size: 0.9rem;"></i>
-                   طباعة
-                </a>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  </div>
+
+  {% if is_admin %}
+  <!-- Search and Filters -->
+  <div class="control-bar">
+    <div class="d-flex flex-column flex-md-row gap-3 align-items-md-center">
+      <!-- Search -->
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="ابحث عن طلب..." onkeyup="filterRequests()">
       </div>
 
-      <!-- Mobile Cards -->
-      <div class="mobile-cards d-md-none">
-        {% for request in service_requests %}
-          <div class="request-card" onclick="window.location.href='{% url 'request_detail' request.id %}'">
-            <div class="d-flex justify-content-between mb-2">
-              <span class="text-info fw-bold">#{{ request.id }}</span>
+      <!-- User Filter -->
+      <div class="flex-grow-1">
+        <form method="get" class="d-flex align-items-center gap-2">
+          <input type="hidden" name="filter" value="{{ filter|default:'all' }}">
+          <label for="assignedFilter" class="mb-0 text-nowrap small fw-medium" style="color: #64748b;">
+            <i class="fas fa-user me-1"></i>
+            المسؤول:
+          </label>
+          <select id="assignedFilter" name="assigned_to" class="custom-select flex-grow-1" onchange="this.form.submit()">
+            <option value="" {% if not assigned_user_id %}selected{% endif %}>الكل</option>
+            <option value="unassigned" {% if assigned_user_id == 'unassigned' %}selected{% endif %}>غير معيّن</option>
+            {% for user in assigned_users %}
+              <option value="{{ user.id }}" {% if assigned_user_id == user.id|stringformat:'s' %}selected{% endif %}>
+                {{ user.get_full_name|default:user.username }}
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      </div>
+    </div>
+
+    <!-- Filter Pills -->
+    <div class="filter-pills mt-3">
+      {% for option in filter_options %}
+        <a href="?filter={{ option.key }}{% if assigned_user_id %}&assigned_to={{ assigned_user_id }}{% endif %}" 
+           class="filter-pill {% if filter == option.key %}active{% endif %}">
+          <i class="fas fa-{{ option.icon }}"></i>
+          <span>{{ option.label }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Requests Grid -->
+  {% if service_requests %}
+    <div class="requests-grid" id="requestsGrid">
+      {% for request in service_requests %}
+        <div class="request-card" onclick="window.location.href='{% url 'request_detail' request.id %}'"
+             data-title="{{ request.title|lower }}" 
+             data-description="{{ request.description|lower }}"
+             data-id="{{ request.id }}">
+          <div class="request-header">
+            <div class="flex-grow-1">
+              <div class="request-id">
+                <i class="fas fa-hashtag"></i>
+                {{ request.id }}
+              </div>
+              <h3 class="request-title mt-2">{{ request.title }}</h3>
+            </div>
+            <div>
               {% if request.status == 'pending' %}
-                <span class="badge bg-warning"><i class="fas fa-hourglass-half"></i> قيد الانتظار</span>
+                <span class="status-badge status-pending">
+                  <i class="fas fa-clock"></i>
+                  قيد الانتظار
+                </span>
               {% elif request.status == 'in_progress' %}
-                <span class="badge bg-info text-dark"><i class="fas fa-spinner"></i> قيد التنفيذ</span>
+                <span class="status-badge status-in-progress">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  قيد التنفيذ
+                </span>
               {% elif request.status == 'completed' %}
-                <span class="badge bg-success"><i class="fas fa-check-circle"></i> مكتمل</span>
+                <span class="status-badge status-completed">
+                  <i class="fas fa-check-circle"></i>
+                  مكتمل
+                </span>
               {% elif request.status == 'under_review' %}
-                <span class="badge bg-primary"><i class="fas fa-eye"></i> قيد المراجعة</span>
+                <span class="status-badge status-review">
+                  <i class="fas fa-eye"></i>
+                  قيد المراجعة
+                </span>
               {% else %}
-                <span class="badge bg-light text-dark">{{ request.status }}</span>
+                <span class="status-badge" style="background: #f1f5f9; color: #475569;">
+                  {{ request.status }}
+                </span>
               {% endif %}
             </div>
-            <h6 class="mb-2">{{ request.title }}</h6>
-            <p class="text-muted small mb-2">{{ request.description|truncatechars:60 }}</p>
-            <div class="d-flex justify-content-between text-muted small">
+          </div>
+
+          <p class="request-description">
+            {{ request.description|truncatechars:120 }}
+          </p>
+
+          {% if request.pipeline %}
+            <div class="mb-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <small style="color: #64748b; font-weight: 500;">
+                  <i class="fas fa-project-diagram me-1"></i>
+                  {{ request.pipeline.name_ar }}
+                </small>
+                <small style="color: #64748b; font-weight: 600;">
+                  {{ request.get_pipeline_progress }}%
+                </small>
+              </div>
+              <div class="progress-bar-custom">
+                <div class="progress-fill" style="width: {{ request.get_pipeline_progress }}%"></div>
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="request-meta">
+            <div class="meta-item">
+              <i class="fas fa-building"></i>
               <span>{{ request.section.name }}</span>
+            </div>
+            {% if request.current_station %}
+              <div class="meta-item">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>{{ request.current_station.name_ar }}</span>
+              </div>
+            {% endif %}
+            <div class="meta-item">
+              <i class="fas fa-user"></i>
               <span>
                 {% if request.assigned_to %}
                   {{ request.assigned_to.get_full_name|default:request.assigned_to.username }}
                 {% else %}
-                  غير معيّن
+                  <em>غير معيّن</em>
                 {% endif %}
               </span>
             </div>
-            <div class="text-muted small mt-2">{{ request.created_at|date:"Y-m-d H:i" }}</div>
+            <div class="meta-item">
+              <i class="fas fa-calendar"></i>
+              <span>{{ request.created_at|date:"Y/m/d" }}</span>
+            </div>
           </div>
-          <hr>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="empty-state text-center py-5">
-        <div class="mb-4">
-          <svg class="animate__animated animate__pulse" width="120" height="120" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.25 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-          </svg>
+
+          <div class="action-btns" onclick="event.stopPropagation();">
+            <a href="{% url 'request_detail' request.id %}" class="btn-action btn-primary-action">
+              <i class="fas fa-eye me-1"></i>
+              عرض التفاصيل
+            </a>
+            <a href="{% url 'print_request' request.id %}" class="btn-action btn-secondary-action">
+              <i class="fas fa-print me-1"></i>
+              طباعة
+            </a>
+          </div>
         </div>
-        <h4 class="mb-3">لا توجد طلبات متاحة</h4>
-        <p class="text-muted">يمكنك التحقق مرة أخرى لاحقًا أو إنشاء طلب جديد</p>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">
+        <i class="fas fa-inbox"></i>
       </div>
-    {% endif %}
-  </div>
+      <h3 style="color: #1e293b; margin-bottom: 0.5rem;">لا توجد طلبات متاحة</h3>
+      <p style="color: #64748b; margin-bottom: 1.5rem;">
+        لم يتم العثور على أي طلبات مطابقة للفلاتر المحددة
+      </p>
+      <a href="?filter=all" class="btn-action btn-primary-action">
+        <i class="fas fa-sync me-2"></i>
+        إعادة تعيين الفلاتر
+      </a>
+    </div>
+  {% endif %}
 </div>
 
 <script>
-  // Scroll Progress Indicator
-  window.addEventListener('scroll', () => {
-    const scrollProgress = document.getElementById('scrollProgress');
-    const windowHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-    const scrolled = (window.scrollY / windowHeight) * 100;
-    scrollProgress.style.width = scrolled + '%';
-  });
-
-  // Smooth Table Row Hover
-  document.querySelectorAll('tr[onclick]').forEach(row => {
-    row.addEventListener('mouseenter', () => {
-      row.style.transform = 'scale(1.01)';
-      row.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-    });
+  // Search Filter
+  function filterRequests() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const cards = document.querySelectorAll('.request-card');
     
-    row.addEventListener('mouseleave', () => {
-      row.style.transform = 'scale(1)';
-      row.style.boxShadow = 'none';
+    cards.forEach(card => {
+      const title = card.dataset.title || '';
+      const description = card.dataset.description || '';
+      const id = card.dataset.id || '';
+      
+      if (title.includes(searchValue) || description.includes(searchValue) || id.includes(searchValue)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  // Smooth card entrance animation
+  document.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('.request-card');
+    cards.forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      setTimeout(() => {
+        card.style.transition = 'all 0.5s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, index * 50);
     });
   });
 </script>

@@ -169,3 +169,18 @@ class ServiceRequest(models.Model):
         if not self.current_station:
             return False
         return self.current_station.is_final
+
+    @property
+    def status(self):
+        """Returns the status of the request based on current station"""
+        if not self.current_station:
+            return 'pending'
+        
+        if self.current_station.is_final:
+            return 'completed'
+            
+        if self.current_station.is_initial:
+            return 'pending'
+            
+        return 'in_progress'
+

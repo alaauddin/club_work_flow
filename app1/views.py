@@ -282,6 +282,22 @@ def requests_to_me(request):
         assigned_to__service_provider__in=service_providers
     ).distinct().order_by('username')
 
+    # Calculate statistics for the dashboard using DB queries
+    pending_count = service_requests.filter(
+        Q(current_station__isnull=True) | Q(current_station__is_initial=True)
+    ).count()
+    
+    completed_count = service_requests.filter(current_station__is_final=True).count()
+    
+    in_progress_count = service_requests.filter(
+        current_station__isnull=False,
+        current_station__is_initial=False,
+        current_station__is_final=False
+    ).count()
+
+    # Check if user is in Admin group
+    is_admin = request.user.groups.filter(name='SP_admin').exists() or request.user.is_superuser
+
     context = {
         'service_requests': service_requests,
         'filter': filter_type,
@@ -291,6 +307,10 @@ def requests_to_me(request):
         'stations': all_stations,
         'allowed_stations': allowed_stations,
         'selected_station': station_filter,
+        'pending_count': pending_count,
+        'in_progress_count': in_progress_count,
+        'completed_count': completed_count,
+        'is_admin': is_admin,
     }
     return render(request, 'read/requests_to_me.html', context)
 
