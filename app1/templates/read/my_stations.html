@@ -173,36 +173,67 @@
       <div class="stations-grid">
         {% for item in stations_with_counts %}
         {% if item.is_special %}
-          <!-- Special Card for Unassigned Pipeline -->
-          <div class="station-card" style="border-top-color: {{ item.color }}; background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);" onclick="window.location.href='{% url 'requests_to_me' %}?no_pipeline=true'">
-            <div class="station-name">
-              <span class="station-color-dot" style="background-color: {{ item.color }};"></span>
-              <i class="fas fa-exclamation-triangle ms-2" style="color: {{ item.color }};"></i>
-              {{ item.name_ar }}
-            </div>
-            
-            <div class="station-description">
-              {{ item.description }}
-            </div>
-
-            <div class="station-meta">
-              <div class="request-count">
-                <i class="fas fa-clipboard-list"></i>
-                <div>
-                  <div class="request-count-value" style="color: {{ item.color }};">{{ item.count }}</div>
-                  <small class="text-muted">طلب</small>
-                </div>
+          <!-- Special Card -->
+          {% if item.special_type == 'unassigned_pipeline' %}
+            <!-- For SP_ADMIN: All requests without pipeline -->
+            <div class="station-card" style="border-top-color: {{ item.color }}; background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);" onclick="window.location.href='{% url 'station_requests' %}?type=unassigned_pipeline'">
+              <div class="station-name">
+                <span class="station-color-dot" style="background-color: {{ item.color }};"></span>
+                <i class="fas fa-exclamation-triangle ms-2" style="color: {{ item.color }};"></i>
+                {{ item.name_ar }}
               </div>
               
-              <a href="{% url 'requests_to_me' %}?no_pipeline=true" class="btn view-requests-btn" style="background: {{ item.color }};" onclick="event.stopPropagation();">
-                <i class="fas fa-arrow-left ms-1"></i>
-                عرض الطلبات
-              </a>
+              <div class="station-description">
+                {{ item.description }}
+              </div>
+
+              <div class="station-meta">
+                <div class="request-count">
+                  <i class="fas fa-clipboard-list"></i>
+                  <div>
+                    <div class="request-count-value" style="color: {{ item.color }};">{{ item.count }}</div>
+                    <small class="text-muted">طلب</small>
+                  </div>
+                </div>
+                
+                <a href="{% url 'station_requests' %}?type=unassigned_pipeline" class="btn view-requests-btn" style="background: {{ item.color }};" onclick="event.stopPropagation();">
+                  <i class="fas fa-arrow-left ms-1"></i>
+                  عرض الطلبات
+                </a>
+              </div>
             </div>
-          </div>
+          {% elif item.special_type == 'assigned_no_pipeline' %}
+            <!-- For SP: Assigned requests without pipeline -->
+            <div class="station-card" style="border-top-color: {{ item.color }}; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);" onclick="window.location.href='{% url 'station_requests' %}?type=assigned_no_pipeline'">
+              <div class="station-name">
+                <span class="station-color-dot" style="background-color: {{ item.color }};"></span>
+                <i class="fas fa-user-tag ms-2" style="color: {{ item.color }};"></i>
+                {{ item.name_ar }}
+              </div>
+              
+              <div class="station-description">
+                {{ item.description }}
+              </div>
+
+              <div class="station-meta">
+                <div class="request-count">
+                  <i class="fas fa-clipboard-list"></i>
+                  <div>
+                    <div class="request-count-value" style="color: {{ item.color }};">{{ item.count }}</div>
+                    <small class="text-muted">طلب</small>
+                  </div>
+                </div>
+                
+                <a href="{% url 'station_requests' %}?type=assigned_no_pipeline" class="btn view-requests-btn" style="background: {{ item.color }};" onclick="event.stopPropagation();">
+                  <i class="fas fa-arrow-left ms-1"></i>
+                  عرض الطلبات
+                </a>
+              </div>
+            </div>
+          {% endif %}
         {% else %}
           <!-- Regular Station Card -->
-          <div class="station-card" style="border-top-color: {{ item.station.color }};" onclick="window.location.href='{% url 'requests_to_me' %}?station={{ item.station.id }}'">
+          <div class="station-card" style="border-top-color: {{ item.station.color }};" onclick="window.location.href='{% url 'station_requests' %}?station={{ item.station.id }}'">
             <div class="station-name">
               <span class="station-color-dot" style="background-color: {{ item.station.color }};"></span>
               {{ item.station.name_ar }}
@@ -223,7 +254,7 @@
                 </div>
               </div>
               
-              <a href="{% url 'requests_to_me' %}?station={{ item.station.id }}" class="btn view-requests-btn" onclick="event.stopPropagation();">
+              <a href="{% url 'station_requests' %}?station={{ item.station.id }}" class="btn view-requests-btn" onclick="event.stopPropagation();">
                 <i class="fas fa-arrow-left ms-1"></i>
                 عرض الطلبات
               </a>

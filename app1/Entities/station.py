@@ -13,7 +13,6 @@ class Station(models.Model):
     order = models.IntegerField(default=0, help_text='Global display order')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    allowed_users = models.ManyToManyField(User, blank=True)
 
     class Meta:
         ordering = ['order', 'name']

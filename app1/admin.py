@@ -38,7 +38,8 @@ class StationAdmin(admin.ModelAdmin):
 class PipelineStationInline(admin.TabularInline):
     model = PipelineStation
     extra = 1
-    fields = ['station', 'order', 'can_skip', 'required_role']
+    fields = ['station', 'order', 'can_skip', 'allowed_users']
+    filter_horizontal = ['allowed_users']
     ordering = ['order']
 
 
@@ -53,8 +54,9 @@ class PipelineAdmin(admin.ModelAdmin):
 
 @admin.register(PipelineStation)
 class PipelineStationAdmin(admin.ModelAdmin):
-    list_display = ['pipeline', 'station', 'order', 'can_skip', 'required_role']
+    list_display = ['pipeline', 'station', 'order', 'can_skip']
     list_filter = ['pipeline', 'can_skip']
+    filter_horizontal = ['allowed_users']
     ordering = ['pipeline', 'order']
 
 

@@ -71,18 +71,7 @@ class ServiceRequest(models.Model):
         if not next_station:
             return False
         
-        # Check if a specific role is required for the current station
-        if user:
-            try:
-                current_ps = PipelineStation.objects.get(
-                    pipeline=self.pipeline,
-                    station=self.current_station
-                )
-                if current_ps.required_role and not user.groups.filter(id=current_ps.required_role.id).exists():
-                    return False
-            except PipelineStation.DoesNotExist:
-                return False
-        
+        # Additional validation can be added here if needed
         return True
 
     def move_to_next_station(self, user, comment=''):
