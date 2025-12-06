@@ -74,6 +74,48 @@ class ServiceRequest(models.Model):
         # Additional validation can be added here if needed
         return True
 
+    def send_station_notification(self, station):
+        """Sends notifications to relevant users when request enters a station"""
+        from app1.views.notifications import send_message
+        
+        if not self.pipeline:
+            return
+            
+        try:
+            pipeline_station = PipelineStation.objects.get(
+                pipeline=self.pipeline,
+                station=station
+            )
+            
+            message = f'*نظام صيانة النادي الترفيهي الرياضي*\nوصل طلب جديد إلى محطة: {station.name_ar}\nعنوان الطلب: {self.title}\nرابط الطلب: https://net.sportainmentclub.com/request_detail/{self.id}'
+            
+            # 1. Show Assigned Requests Only
+            if pipeline_station.show_assigned_requests:
+                if self.assigned_to and hasattr(self.assigned_to, 'profile'):
+                    send_message(self.assigned_to.profile.phone, message)
+            
+            # 2. Show Managers Only
+            elif pipeline_station.show_the_managers_only:
+                for manager in self.section.manager.all():
+                    if hasattr(manager, 'profile'):
+                        send_message(manager.profile.phone, message)
+            
+            # 3. Default: Notify Allowed Users
+            else:
+                # If allowed_users is empty, it means ALL users can access. 
+                # We probably shouldn't notify ALL users in the system, so we might skip or notify admins.
+                # But per requirement "message should be sent to the users allowed", if allowed is empty (all), 
+                # maybe we don't send to avoid spamming everyone? 
+                # Or we send to those who have access permissions?
+                # Let's stick to: if specific users are allowed, notify them.
+                if pipeline_station.allowed_users.exists():
+                    for user in pipeline_station.allowed_users.all():
+                        if hasattr(user, 'profile'):
+                            send_message(user.profile.phone, message)
+                            
+        except PipelineStation.DoesNotExist:
+            pass
+
     def move_to_next_station(self, user, comment=''):
         """Transitions the request to the next station and creates a log entry"""
         from django.utils import timezone
@@ -101,6 +143,9 @@ class ServiceRequest(models.Model):
             comment=comment or f'Moved from {old_station.name} to {next_station.name}',
             created_by=user
         )
+        
+        # Send notification
+        self.send_station_notification(next_station)
         
         return True, f"Successfully moved to {next_station.name}"
 
@@ -131,6 +176,9 @@ class ServiceRequest(models.Model):
             comment=comment or f'Moved from {old_station.name if old_station else "None"} to {station.name}',
             created_by=user
         )
+        
+        # Send notification
+        self.send_station_notification(station)
         
         return True, f"Successfully moved to {station.name}"
 

@@ -190,43 +190,68 @@ def my_request(request):
 def my_stations(request):
     """Show stations the user has access to"""
     
-    # Get all pipeline-station combinations the user is allowed to access
-    if request.user.is_authenticated:
-        # Show pipeline-stations where user is in allowed_users OR where allowed_users is empty (unrestricted)
-        allowed_pipeline_stations = PipelineStation.objects.filter(
-            Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
-        ).select_related('station', 'pipeline').distinct()
-    else:
-        # For anonymous users, show unrestricted pipeline-stations
-        allowed_pipeline_stations = PipelineStation.objects.filter(
-            allowed_users__isnull=True
-        ).select_related('station', 'pipeline').distinct()
-    
-    # Group by station and calculate counts
-    from collections import defaultdict
-    station_data = defaultdict(lambda: {'pipelines': [], 'total_count': 0, 'station_obj': None})
-    
-    for ps in allowed_pipeline_stations:
-        station = ps.station
+    # Superusers see ALL stations with ALL requests
+    if request.user.is_superuser:
+        # Get all pipeline-stations
+        all_pipeline_stations = PipelineStation.objects.all().select_related('station', 'pipeline').distinct()
         
-        # Check if this pipeline-station has show_assigned_requests enabled
-        if ps.show_assigned_requests:
-            # Only count requests assigned to the current user
-            request_count = ServiceRequest.objects.filter(
-                current_station=station,
-                pipeline=ps.pipeline,
-                assigned_to=request.user
-            ).count()
-        else:
-            # Show all requests in this station for this pipeline
+        # Group by station and calculate counts (all requests, no filtering)
+        from collections import defaultdict
+        station_data = defaultdict(lambda: {'pipelines': [], 'total_count': 0, 'station_obj': None})
+        
+        for ps in all_pipeline_stations:
+            station = ps.station
+            
+            # Count ALL requests in this station for this pipeline (no user filtering)
             request_count = ServiceRequest.objects.filter(
                 current_station=station,
                 pipeline=ps.pipeline
             ).count()
+            
+            station_data[station.id]['station_obj'] = station
+            station_data[station.id]['pipelines'].append(ps.pipeline)
+            station_data[station.id]['total_count'] += request_count
+    else:
+        # Normal users: filter by permissions
+        # Get all pipeline-station combinations the user is allowed to access
+        if request.user.is_authenticated:
+            # Show pipeline-stations where user is in allowed_users OR where allowed_users is empty (unrestricted)
+            allowed_pipeline_stations = PipelineStation.objects.filter(
+                Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
+            ).select_related('station', 'pipeline').distinct()
+        else:
+            # For anonymous users, show unrestricted pipeline-stations
+            allowed_pipeline_stations = PipelineStation.objects.filter(
+                allowed_users__isnull=True
+            ).select_related('station', 'pipeline').distinct()
+        logger.info(f'here are the request allowed_pipeline_stations {allowed_pipeline_stations}')
         
-        station_data[station.id]['station_obj'] = station
-        station_data[station.id]['pipelines'].append(ps.pipeline)
-        station_data[station.id]['total_count'] += request_count
+        # Group by station and calculate counts
+        from collections import defaultdict
+        station_data = defaultdict(lambda: {'pipelines': [], 'total_count': 0, 'station_obj': None})
+        
+        for ps in allowed_pipeline_stations:
+            station = ps.station
+            
+            # Start with base filter for station and pipeline
+            base_filter = Q(current_station=station, pipeline=ps.pipeline)
+            
+            # Add show_assigned_requests filter if enabled
+            if ps.show_assigned_requests:
+                base_filter &= Q(assigned_to=request.user)
+            
+            # Add show_the_managers_only filter if enabled
+            if ps.show_the_managers_only:
+                # Only show requests from sections where current user is a manager
+                base_filter &= Q(section__manager=request.user)
+            
+            # Count requests with combined filters
+            request_count = ServiceRequest.objects.filter(base_filter).count()
+            logger.info(f'Pipeline-Station {ps}: request count {request_count} (show_assigned={ps.show_assigned_requests}, show_managers_only={ps.show_the_managers_only})')
+
+            station_data[station.id]['station_obj'] = station
+            station_data[station.id]['pipelines'].append(ps.pipeline)
+            station_data[station.id]['total_count'] += request_count
     
     # Convert to list format for template
     stations_with_counts = []
@@ -287,7 +312,7 @@ def station_requests(request):
     station_id = request.GET.get('station', '')
     filter_type = request.GET.get('type', '')  # 'unassigned_pipeline' or 'assigned_no_pipeline'
     
-    service_requests = ServiceRequest.objects.all()
+    service_requests = ServiceRequest.objects.none()  # Start with empty queryset
     page_title = 'الطلبات'
     page_description = ''
     page_color = '#667eea'
@@ -295,14 +320,14 @@ def station_requests(request):
     # Filter based on type
     if filter_type == 'unassigned_pipeline':
         # SP_ADMIN: All requests without pipeline
-        service_requests = service_requests.filter(pipeline__isnull=True)
+        service_requests = ServiceRequest.objects.filter(pipeline__isnull=True)
         page_title = 'طلبات بدون مسار عمل'
         page_description = 'جميع الطلبات التي لم يتم تعيين مسار عمل لها'
         page_color = '#f59e0b'
         
     elif filter_type == 'assigned_no_pipeline':
         # SP: Requests without pipeline assigned to current user
-        service_requests = service_requests.filter(
+        service_requests = ServiceRequest.objects.filter(
             pipeline__isnull=True,
             assigned_to=request.user  # Only current user's requests
         )
@@ -314,37 +339,66 @@ def station_requests(request):
         # Regular station filter
         try:
             station = Station.objects.get(id=station_id)
-            service_requests = service_requests.filter(current_station=station)
             
-            # Check if user has access to this station through any pipeline
-            user_pipeline_stations = PipelineStation.objects.filter(
-                station=station
-            ).filter(
-                Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
-            )
-            
-            
-            if not user_pipeline_stations.exists():
-                messages.error(request, 'ليس لديك صلاحية للوصول إلى هذه المحطة')
-                return redirect('my_stations')
-            
-            # Check if any of the user's accessible pipeline-stations has show_assigned_requests enabled
-            show_assigned_ps = user_pipeline_stations.filter(show_assigned_requests=True)
-            
-            if show_assigned_ps.exists():
-                # Only show requests assigned to the current user
-                service_requests = service_requests.filter(assigned_to=request.user)
-                page_description = f'الطلبات المعينة لك في محطة {station.name_ar}'
+            # Superusers see ALL requests in the station
+            logger.info(f'User {request.user} is a superuser: {request.user.is_superuser}')
+            if request.user.is_superuser:
+                service_requests = ServiceRequest.objects.filter(current_station=station)
+                page_description = f'جميع الطلبات في محطة {station.name_ar} (عرض المشرف)'
+                page_title = station.name_ar
             else:
-                page_description = station.description or f'الطلبات في محطة {station.name_ar}'
+                # Check if user has access to this station through any pipeline
+                user_pipeline_stations = PipelineStation.objects.filter(
+                    station=station
+                ).filter(
+                    Q(allowed_users=request.user) | ~Q(allowed_users__isnull=False)
+                ).select_related('pipeline')
+                
+                if not user_pipeline_stations.exists():
+                    messages.error(request, 'ليس لديك صلاحية للوصول إلى هذه المحطة')
+                    return redirect('my_stations')
+                
+                # Build queryset by combining requests from each accessible pipeline
+                from django.db.models import Q as Q_filter
+                combined_query = Q_filter()
+                has_show_assigned = False
+                
+                for ps in user_pipeline_stations:
+                    # Start with base filter for this pipeline-station
+                    ps_filter = Q_filter(current_station=station, pipeline=ps.pipeline)
+                    
+                    # Add show_assigned_requests filter if enabled
+                    if ps.show_assigned_requests:
+                        ps_filter &= Q_filter(assigned_to=request.user)
+                        has_show_assigned = True
+                    
+                    # Add show_the_managers_only filter if enabled
+                    if ps.show_the_managers_only:
+                        ps_filter &= Q_filter(section__manager=request.user)
+                    
+                    # Add this pipeline-station's filter to combined query
+                    combined_query |= ps_filter
+                
+                service_requests = ServiceRequest.objects.filter(combined_query)
+                
+                # Update description based on whether any pipeline has show_assigned_requests
+                if has_show_assigned:
+                    page_description = f'الطلبات في محطة {station.name_ar} (بعضها مقيد بالطلبات المعينة لك)'
+                else:
+                    page_description = station.description or f'الطلبات في محطة {station.name_ar}'
+                
+                # Set page title with pipeline info if available
+                if user_pipeline_stations.count() == 1:
+                    page_title = f'{station.name_ar} - {user_pipeline_stations.first().pipeline.name_ar}'
+                else:
+                    page_title = station.name_ar
             
-            page_title = station.name_ar
             page_color = station.color or '#667eea'
         except Station.DoesNotExist:
             messages.error(request, 'المحطة غير موجودة')
             return redirect('my_stations')
     
-    service_requests = service_requests.order_by('-created_at')
+    service_requests = service_requests.order_by('-created_at').distinct()
     
     # Calculate statistics
     total_count = service_requests.count()
@@ -542,9 +596,8 @@ def request_detail(request, id):
     previous_station = service_request.get_previous_station() if service_request.pipeline else None
     
     # Check if user can access next station
-    can_move_next = False
-    if next_station:
-        can_move_next = can_user_access_station(request.user, next_station, service_request)
+    can_move_next = True
+
     
     # Get all stations in pipeline for manual selection
     pipeline_stations = service_request.pipeline.get_ordered_stations() if service_request.pipeline else []

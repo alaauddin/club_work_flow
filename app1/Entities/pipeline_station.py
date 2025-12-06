@@ -26,7 +26,7 @@ class PipelineStation(models.Model):
     can_edit_purchase_order = models.BooleanField(default=False, help_text='Can this station edit the purchase order?')
     can_edit_inventory_order = models.BooleanField(default=False, help_text='Can this station edit the inventory order?')
     show_assigned_requests = models.BooleanField(default=False, help_text='Show assigned requests to this station?')
-
+    show_the_managers_only = models.BooleanField(default=False, help_text='Show the managers only?')
 
     class Meta:
         ordering = ['pipeline', 'order']
