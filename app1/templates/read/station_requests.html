@@ -339,7 +339,7 @@
   {% if service_requests %}
     <div class="requests-grid">
       {% for request in service_requests %}
-        <div class="request-card" onclick="window.location.href='{% url 'request_detail' request.id %}'">
+        <div class="request-card" onclick="window.location.href='{% url 'request_detail' request.id %}{% if request.GET.station %}?station={{ request.GET.station }}{% elif request.GET.type %}?type={{ request.GET.type }}{% endif %}'">
           <div class="request-header">
             <div class="flex-grow-1">
               <div class="request-id">
@@ -421,7 +421,7 @@
           </div>
 
           <div class="action-btns" onclick="event.stopPropagation();">
-            <a href="{% url 'request_detail' request.id %}" class="btn-action btn-primary-action">
+            <a href="{% url 'request_detail' request.id %}{% if request.GET.station %}?station={{ request.GET.station }}{% elif request.GET.type %}?type={{ request.GET.type }}{% endif %}" class="btn-action btn-primary-action">
               <i class="fas fa-eye me-1"></i>
               عرض التفاصيل
             </a>

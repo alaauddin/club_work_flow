@@ -29,7 +29,7 @@
     background: #fff;
     border-radius: 1.5rem;
     box-shadow: 0 0.5rem 1.5rem rgba(13, 110, 253, 0.08);
-    padding: 2rem;
+    padding: 0.5rem;
     margin-bottom: 2rem;
   }
   .section-card .section-title {
@@ -44,13 +44,13 @@
   .section-card .section-title p { margin: 0; }
   .action-bar .btn {
     border-radius: 999px;
-    padding: 0.65rem 1.4rem;
+    {% comment %} padding: 0.65rem 1.4rem; {% endcomment %}
     font-weight: 600;
   }
   .report-card {
     border: 1px solid rgba(13, 110, 253, 0.1);
     border-radius: 1.25rem;
-    padding: 1.5rem;
+    padding: 0.5rem;
     margin-bottom: 1.5rem;
     background: #fdfdff;
   }
@@ -122,6 +122,20 @@
     .timeline-item::before { right: -1rem; }
     .action-bar { width: 100%; justify-content: flex-start; }
   }
+  
+  /* Text Overflow Fixes */
+  .report-card, 
+  .sub-card, 
+  .section-card, 
+  .timeline-item, 
+  .info-chip,
+  .request-hero__banner,
+  .alert {
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
 </style>
 
 <div class="container py-5 request-detail-wrapper" dir="rtl">
@@ -146,6 +160,11 @@
           <p class="mb-0 text-white-75">{{ service_request.description|default:"لا توجد تفاصيل مرفوعة للطلب." }}</p>
         </div>
         <div class="d-flex flex-wrap align-items-center justify-content-end gap-2 action-bar">
+          <a href="{% if request.GET.station %}{% url 'station_requests' %}?station={{ request.GET.station }}{% elif request.GET.type %}{% url 'station_requests' %}?type={{ request.GET.type }}{% else %}{% url 'my_stations' %}{% endif %}" class="btn btn-outline-light">
+            <i class="fas fa-arrow-right ms-2"></i>
+            عودة
+          </a>
+
           <a href="{% url 'assign_to_user' service_request.id %}" class="btn btn-light text-primary">
             {% if service_request.assigned_to %}
               <i class="fas fa-user-check ms-2"></i>
@@ -262,7 +281,7 @@
     {% if reports %}
       {% for report in reports %}
         <div class="report-card">
-        <div class="report-container mb-4 p-4 border rounded shadow-sm bg-light">
+        <div class="report-container mb-4 p-2 border rounded shadow-sm bg-light">
           <!-- Report Header -->
           <div class="d-flex align-items-center justify-content-between mb-3">
             <div>
