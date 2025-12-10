@@ -21,7 +21,7 @@
             <td>{{ provider.name }}</td>
             <td>{{ provider.manager.count }}</td>
             <td>
-                <a href="{% url 'admin:serviceprovider_detail_view' provider.pk %}">View Details</a> |
+                <a href="{% url 'serviceprovider_detail_view' provider.pk %}">View Details</a> |
                 <a href="{% url 'admin:app1_serviceprovider_change' provider.pk %}">Edit</a>
             </td>
         </tr>

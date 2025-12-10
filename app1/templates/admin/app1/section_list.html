@@ -21,7 +21,7 @@
             <td>{{ section.name }}</td>
             <td>{{ section.manager.count }}</td>
             <td>
-                <a href="{% url 'admin:section_detail_view' section.pk %}">View Details</a> |
+                <a href="{% url 'section_detail_view' section.pk %}">View Details</a> |
                 <a href="{% url 'admin:app1_section_change' section.pk %}">Edit</a>
             </td>
         </tr>

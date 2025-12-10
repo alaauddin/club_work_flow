@@ -187,7 +187,7 @@ class UserAdmin(UnfoldImportExportModelAdmin):
     
     def view_details_link(self, obj):
         """Create a link to view user details"""
-        url = reverse('admin:user_detail_view', args=[obj.pk])
+        url = reverse('user_detail_view', args=[obj.pk])
         return format_html('<a href="{}">View Details</a>', url)
     view_details_link.short_description = 'Actions'
     
@@ -196,10 +196,10 @@ class UserAdmin(UnfoldImportExportModelAdmin):
         if queryset.count() == 1:
             # If only one user selected, redirect to detail view
             user = queryset.first()
-            return redirect('admin:user_detail_view', pk=user.pk)
+            return redirect('user_detail_view', pk=user.pk)
         else:
             # If multiple users, show list view
-            return redirect('admin:user_list_view')
+            return redirect('user_list_view')
     view_selected_details.short_description = 'View details of selected users'
     
     def activate_users(self, request, queryset):
@@ -236,7 +236,7 @@ class SectionAdmin(UnfoldImportExportModelAdmin):
     
     def view_details_link(self, obj):
         """Create a link to view section details"""
-        url = reverse('admin:section_detail_view', args=[obj.pk])
+        url = reverse('section_detail_view', args=[obj.pk])
         return format_html('<a href="{}">View Details</a>', url)
     view_details_link.short_description = 'Actions'
     
@@ -244,9 +244,9 @@ class SectionAdmin(UnfoldImportExportModelAdmin):
         """Admin action to view details of selected sections"""
         if queryset.count() == 1:
             section = queryset.first()
-            return redirect('admin:section_detail_view', pk=section.pk)
+            return redirect('section_detail_view', pk=section.pk)
         else:
-            return redirect('admin:section_list_view')
+            return redirect('section_list_view')
     view_selected_details.short_description = 'View details of selected sections'
 
 
@@ -271,7 +271,7 @@ class ServiceProviderAdmin(UnfoldImportExportModelAdmin):
     
     def view_details_link(self, obj):
         """Create a link to view service provider details"""
-        url = reverse('admin:serviceprovider_detail_view', args=[obj.pk])
+        url = reverse('serviceprovider_detail_view', args=[obj.pk])
         return format_html('<a href="{}">View Details</a>', url)
     view_details_link.short_description = 'Actions'
     
@@ -279,9 +279,9 @@ class ServiceProviderAdmin(UnfoldImportExportModelAdmin):
         """Admin action to view details of selected service providers"""
         if queryset.count() == 1:
             provider = queryset.first()
-            return redirect('admin:serviceprovider_detail_view', pk=provider.pk)
+            return redirect('serviceprovider_detail_view', pk=provider.pk)
         else:
-            return redirect('admin:serviceprovider_list_view')
+            return redirect('serviceprovider_list_view')
     view_selected_details.short_description = 'View details of selected service providers'
 
 
