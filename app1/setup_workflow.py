@@ -15,10 +15,25 @@ django.setup()
 
 from app1.models import Station, Pipeline, PipelineStation
 from django.contrib.auth.models import User
+from django.db import connection
+
+
+def ensure_utf8mb4_connection():
+    """Ensure database connection uses utf8mb4"""
+    with connection.cursor() as cursor:
+        try:
+            cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+            cursor.execute("SET CHARACTER SET utf8mb4")
+            cursor.execute("SET character_set_connection=utf8mb4")
+        except Exception as e:
+            print(f"  ⚠ Warning: Could not set utf8mb4 connection: {e}")
 
 
 def get_or_create_station(name, name_ar, is_initial=False, is_final=False, color='#4169E1', order=0):
     """Helper function to get or create a station"""
+    # Ensure UTF-8 connection before creating
+    ensure_utf8mb4_connection()
+    
     station, created = Station.objects.get_or_create(
         name=name,
         defaults={
@@ -34,6 +49,7 @@ def get_or_create_station(name, name_ar, is_initial=False, is_final=False, color
     else:
         # Update existing station if needed
         if station.name_ar != name_ar:
+            ensure_utf8mb4_connection()
             station.name_ar = name_ar
             station.save()
         print(f"  - Station already exists: {station.name} ({station.name_ar})")
@@ -103,6 +119,9 @@ def create_pipeline_needs_materials(stations):
     """Create pipeline: يحتاج مواد (Needs Materials)"""
     print("\nCreating pipeline: يحتاج مواد (Needs Materials)...")
     
+    # Ensure UTF-8 connection before creating
+    ensure_utf8mb4_connection()
+    
     pipeline, created = Pipeline.objects.get_or_create(
         name='Needs Materials',
         defaults={
@@ -146,6 +165,9 @@ def create_pipeline_completion_without_materials(stations):
     """Create pipeline: الانجاز بدون مواد (Completion without Materials)"""
     print("\nCreating pipeline: الانجاز بدون مواد (Completion without Materials)...")
     
+    # Ensure UTF-8 connection before creating
+    ensure_utf8mb4_connection()
+    
     pipeline, created = Pipeline.objects.get_or_create(
         name='Completion without Materials',
         defaults={
@@ -185,6 +207,9 @@ def create_pipeline_completion_without_materials(stations):
 def create_pipeline_external_service(stations):
     """Create pipeline: خدمة خارجية (External Service)"""
     print("\nCreating pipeline: خدمة خارجية (External Service)...")
+    
+    # Ensure UTF-8 connection before creating
+    ensure_utf8mb4_connection()
     
     pipeline, created = Pipeline.objects.get_or_create(
         name='External Service',
