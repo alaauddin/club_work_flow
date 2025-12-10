@@ -2,6 +2,6 @@ Django>=5.0.6
 django-import-export>=4.3.14
 django-unfold>=0.54.0
 dj-database-url>=3.0.1
-psycopg2-binary>=2.9.0
+PyMySQL>=1.1.2
 widget-tweaks
 

@@ -14,6 +14,13 @@ from pathlib import Path
 import os
 import dj_database_url
 
+# Configure PyMySQL as MySQL driver (if using PyMySQL instead of mysqlclient)
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -87,21 +94,19 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# PostgreSQL Database Configuration
-# Since Unix socket and 127.0.0.1 both failed, trying localhost with SSL
-
-# Option 2: Try localhost with different SSL modes
-# If 'prefer' doesn't work, try: 'allow', 'disable', or 'require'
+# MySQL Database Configuration with UTF-8 support for English and Arabic
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.mysql',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'alauddin@123',
         'HOST': 'localhost',
-        'PORT': '5432',
+        'PORT': '3306',
         'OPTIONS': {
-            'sslmode': 'prefer',  # Tries SSL first, falls back to non-SSL if not available
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', character_set_connection=utf8mb4, collation_connection=utf8mb4_unicode_ci",
+            'use_unicode': True,
         },
     }
 }
