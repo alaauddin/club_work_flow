@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-ih1%q+wny%@enk9lrdv)-y2mfg8h*5t($yfnyabuc7p@g@%@)a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['https://net.sportainmentclub.com/','http://net.sportainmentclub.com/','net.sportainmentclub.com','127.0.0.1']
+ALLOWED_HOSTS = ['https://khial.sportainmentclub.com/','http://khial.sportainmentclub.com/','khial.sportainmentclub.com','127.0.0.1']
 
 if DEBUG:
     ALLOWED_HOSTS = ['*']
@@ -176,7 +176,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')
 ]
-STATIC_ROOT = '/home/spordjei/net.sportainmentclub.com/static'
+STATIC_ROOT = '/home/spordjei/khial.sportainmentclub.com/static'
 
 
 MEDIA_URL = '/media/'
