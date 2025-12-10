@@ -33,11 +33,29 @@ class UserResource(resources.ModelResource):
         use_natural_foreign_keys = False
     
     def before_import_row(self, row, **kwargs):
-        """Handle special fields before import"""
+        """Custom validation and processing before importing a user row"""
         # Ensure required fields are present
-        if 'username' not in row or not row['username']:
+        if 'username' not in row or not row.get('username'):
             raise ValueError("Username is required")
+        
+        # Normalize email if provided
+        if 'email' in row and row.get('email'):
+            row['email'] = row['email'].strip().lower()
+        
+        # Set default values for boolean fields if not provided
+        if 'is_staff' not in row or row.get('is_staff') == '':
+            row['is_staff'] = False
+        if 'is_active' not in row or row.get('is_active') == '':
+            row['is_active'] = True
+        if 'is_superuser' not in row or row.get('is_superuser') == '':
+            row['is_superuser'] = False
+        
         return row
+    
+    def after_import_instance(self, instance, row, **kwargs):
+        """Custom processing after user instance is created/updated"""
+        # Additional processing can be added here if needed
+        return instance
     
     def save_instance(self, instance, using_transactions=True, dry_run=False):
         """Set password to '123' for all imported users"""
@@ -52,6 +70,24 @@ class SectionResource(resources.ModelResource):
         model = Section
         import_id_fields = ('name',)  # Match by name first, allows override even with different id
         skip_unchanged = False  # Allow updates even if unchanged
+        fields = ('id', 'name', 'manager')
+    
+    def before_import_row(self, row, **kwargs):
+        """Custom validation and processing before importing a section row"""
+        # Ensure name is present
+        if 'name' not in row or not row.get('name'):
+            raise ValueError("Section name is required")
+        return row
+    
+    def after_import_instance(self, instance, row, **kwargs):
+        """Handle manager ManyToMany relationship after instance is created/updated"""
+        # Handle manager field if provided in CSV
+        # Expected format: comma-separated usernames (e.g., "user1,user2,user3")
+        if 'manager' in row and row.get('manager'):
+            manager_usernames = [username.strip() for username in str(row['manager']).split(',') if username.strip()]
+            managers = User.objects.filter(username__in=manager_usernames)
+            instance.manager.set(managers)
+        return instance
 
 class UserProfileResource(resources.ModelResource):
     class Meta:
@@ -64,6 +100,24 @@ class ServiceProviderResource(resources.ModelResource):
         model = ServiceProvider
         import_id_fields = ('name',)  # Match by name, allows override even with different id
         skip_unchanged = False
+        fields = ('id', 'name', 'manager')
+    
+    def before_import_row(self, row, **kwargs):
+        """Custom validation and processing before importing a service provider row"""
+        # Ensure name is present
+        if 'name' not in row or not row.get('name'):
+            raise ValueError("Service provider name is required")
+        return row
+    
+    def after_import_instance(self, instance, row, **kwargs):
+        """Handle manager ManyToMany relationship after instance is created/updated"""
+        # Handle manager field if provided in CSV
+        # Expected format: comma-separated usernames (e.g., "user1,user2,user3")
+        if 'manager' in row and row.get('manager'):
+            manager_usernames = [username.strip() for username in str(row['manager']).split(',') if username.strip()]
+            managers = User.objects.filter(username__in=manager_usernames)
+            instance.manager.set(managers)
+        return instance
 
 class StationResource(resources.ModelResource):
     class Meta:
