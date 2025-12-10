@@ -490,34 +490,34 @@
 
 
   <!-- Completion Report Modal -->
-  <div class="modal fade" id="completionReportModal" tabindex="-1" aria-labelledby="completionReportModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+  <div class="modal fade" id="completionReportModal" tabindex="-1" aria-labelledby="completionReportModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header bg-success text-white">
           <h5 class="modal-title" id="completionReportModalLabel">إنشاء تقرير إنجاز</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div class="modal-body">
-          <form action="{% url 'create_completion_report' service_request.id %}" method="POST">
-            {% csrf_token %}
+        <form action="{% url 'create_completion_report' service_request.id %}" method="POST" id="completionReportForm">
+          {% csrf_token %}
+          <div class="modal-body">
             <div class="mb-3">
               <label for="completionDetails" class="form-label">تفاصيل التقرير <span class="text-danger">*</span></label>
               <textarea class="form-control" name="report_details" id="completionDetails" rows="4" required placeholder="أدخل تفاصيل تقرير الإنجاز..."></textarea>
             </div>
-            <div class="alert alert-info small" role="alert">
+            <div class="alert alert-info small mb-0" role="alert">
               <i class="fas fa-info-circle ms-2"></i>
               <strong>ملاحظة:</strong> سيتم تلقائياً الانتقال إلى المحطة التالية بعد إنشاء التقرير.
             </div>
-            <div class="text-end">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                <i class="fas fa-times ms-2"></i>إلغاء
-              </button>
-              <button type="submit" class="btn btn-success">
-                <i class="fas fa-check ms-2"></i>تسليم
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times ms-2"></i>إلغاء
+            </button>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-check ms-2"></i>تسليم
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -663,6 +663,30 @@
         }
       });
     });
+
+    // Fix completion report modal stability
+    const completionModal = document.getElementById('completionReportModal');
+    if (completionModal) {
+      // Reset form when modal is hidden
+      completionModal.addEventListener('hidden.bs.modal', function () {
+        const form = document.getElementById('completionReportForm');
+        if (form) {
+          form.reset();
+        }
+      });
+      
+      // Prevent modal from closing on backdrop click during form submission
+      const completionForm = document.getElementById('completionReportForm');
+      if (completionForm) {
+        completionForm.addEventListener('submit', function(e) {
+          const submitBtn = this.querySelector('button[type="submit"]');
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin ms-2"></i>جاري المعالجة...';
+          }
+        });
+      }
+    }
   </script>
 </div>
 {% endblock %}

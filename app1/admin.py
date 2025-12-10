@@ -298,7 +298,7 @@ class StationAdmin(UnfoldImportExportModelAdmin):
 class PipelineStationInline(TabularInline):
     model = PipelineStation
     extra = 1
-    fields = ['station', 'order', 'can_skip', 'allowed_users']
+    fields = ['station', 'order', 'can_skip', 'allowed_users', 'can_create_purchase_order', 'can_create_inventory_order', 'can_create_completion_report', 'can_send_back', 'can_edit_completion_report', 'can_edit_purchase_order', 'can_edit_inventory_order', 'show_assigned_requests', 'show_the_managers_only']
     filter_horizontal = ['allowed_users']
     ordering = ['order']
 
