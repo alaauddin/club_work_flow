@@ -100,7 +100,7 @@ DATABASES = {
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'UZ7Kb?c~KbHd',
         'HOST': 'localhost',
-        'PORT': '5432',
+        'PORT': '',
     }
 }
 
