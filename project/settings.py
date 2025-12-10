@@ -87,20 +87,51 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# PostgreSQL Database Configuration using dj-database-url
-# You can set DATABASE_URL environment variable, or it will use the default below
-# Format: postgresql://user:password@host:port/database
-# Note: Password is URL-encoded (? = %3F, ~ = %7E)
+# PostgreSQL Database Configuration
+# Try different connection methods if one doesn't work:
+# 1. Unix socket (empty HOST) - works if pg_hba.conf allows local connections
+# 2. localhost instead of 127.0.0.1 - might use different pg_hba.conf rules
+# 3. SSL connection - if SSL is required
+
+# Option 1: Try Unix socket connection first (most likely to work without sudo)
 DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get(
-            'DATABASE_URL',
-            'postgresql://club_work_flow_db_user:alauddin@123@127.0.0.1:5432/spordjei_club_work_flow'
-        ),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'spordjei_club_work_flow',
+        'USER': 'club_work_flow_db_user',
+        'PASSWORD': 'alauddin@123',
+        'HOST': '',  # Empty string uses Unix socket connection
+        'PORT': '',  # Empty string uses default port
+    }
 }
+
+# Option 2: If Unix socket doesn't work, try localhost with SSL
+# Uncomment and comment out Option 1 above:
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'spordjei_club_work_flow',
+#         'USER': 'club_work_flow_db_user',
+#         'PASSWORD': 'alauddin@123',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#         'OPTIONS': {
+#             'sslmode': 'require',  # Try 'prefer', 'require', or 'disable'
+#         },
+#     }
+# }
+
+# Option 3: Using dj-database-url (if you prefer)
+# DATABASES = {
+#     'default': dj_database_url.config(
+#         default=os.environ.get(
+#             'DATABASE_URL',
+#             'postgresql://club_work_flow_db_user:alauddin%40123@localhost:5432/spordjei_club_work_flow?sslmode=require'
+#         ),
+#         conn_max_age=600,
+#         conn_health_checks=True,
+#     )
+# }
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
