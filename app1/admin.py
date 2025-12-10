@@ -46,16 +46,85 @@ class UserResource(resources.ModelResource):
             instance.set_password('123')
         return super().save_instance(instance, using_transactions, dry_run)
 
+# Resource classes for all models
+class SectionResource(resources.ModelResource):
+    class Meta:
+        model = Section
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class UserProfileResource(resources.ModelResource):
+    class Meta:
+        model = UserProfile
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class ServiceProviderResource(resources.ModelResource):
+    class Meta:
+        model = ServiceProvider
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class StationResource(resources.ModelResource):
+    class Meta:
+        model = Station
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class PipelineResource(resources.ModelResource):
+    class Meta:
+        model = Pipeline
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class PipelineStationResource(resources.ModelResource):
+    class Meta:
+        model = PipelineStation
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class ServiceRequestResource(resources.ModelResource):
+    class Meta:
+        model = ServiceRequest
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class ServiceRequestLogResource(resources.ModelResource):
+    class Meta:
+        model = ServiceRequestLog
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class ReportResource(resources.ModelResource):
+    class Meta:
+        model = Report
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class CompletionReportResource(resources.ModelResource):
+    class Meta:
+        model = CompletionReport
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class PurchaseOrderResource(resources.ModelResource):
+    class Meta:
+        model = PurchaseOrder
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
+class InventoryOrderResource(resources.ModelResource):
+    class Meta:
+        model = InventoryOrder
+        import_id_fields = ('id',)
+        skip_unchanged = True
+
 # User Admin with import/export
 class UserAdmin(UnfoldImportExportModelAdmin):
-    resource_classes = [UserResource]  # Use resource_classes instead of resource_class for Unfold compatibility
+    resource_class = UserResource
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined')
     list_filter = ('is_staff', 'is_active', 'is_superuser', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
-    
-    def get_resource_class(self):
-        """Return the resource class for import/export"""
-        return UserResource
 
 # Unregister User if already registered, then register with our custom admin
 try:
@@ -67,24 +136,28 @@ admin.site.register(User, UserAdmin)
 
 @admin.register(Section)
 class SectionAdmin(UnfoldImportExportModelAdmin):
+    resource_class = SectionResource
     list_display = ['name']
     filter_horizontal = ['manager']
 
 
 @admin.register(UserProfile)
 class UserProfileAdmin(UnfoldImportExportModelAdmin):
+    resource_class = UserProfileResource
     list_display = ['user', 'phone']
     search_fields = ['user__username', 'phone']
 
 
 @admin.register(ServiceProvider)
 class ServiceProviderAdmin(UnfoldImportExportModelAdmin):
+    resource_class = ServiceProviderResource
     list_display = ['name']
     filter_horizontal = ['manager']
 
 
 @admin.register(Station)
 class StationAdmin(UnfoldImportExportModelAdmin):
+    resource_class = StationResource
     list_display = ['name', 'name_ar', 'is_initial', 'is_final', 'order', 'color']
     list_editable = ['order']
     list_filter = ['is_initial', 'is_final']
@@ -102,6 +175,7 @@ class PipelineStationInline(TabularInline):
 
 @admin.register(Pipeline)
 class PipelineAdmin(UnfoldImportExportModelAdmin):
+    resource_class = PipelineResource
     list_display = ['name', 'name_ar', 'is_active', 'created_at']
     list_filter = ['is_active', 'sections']
     search_fields = ['name', 'name_ar']
@@ -111,6 +185,7 @@ class PipelineAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(PipelineStation)
 class PipelineStationAdmin(UnfoldImportExportModelAdmin):
+    resource_class = PipelineStationResource
     list_display = ['pipeline', 'station', 'order', 'can_skip']
     list_filter = ['pipeline', 'can_skip']
     filter_horizontal = ['allowed_users']
@@ -128,6 +203,7 @@ class ServiceRequestLogInline(TabularInline):
 
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(UnfoldImportExportModelAdmin):
+    resource_class = ServiceRequestResource
     list_display = ['title', 'section', 'service_provider', 'pipeline', 'current_station', 'get_progress', 'created_by', 'created_at']
     list_filter = ['current_station', 'pipeline', 'section', 'service_provider']
     search_fields = ['title', 'description']
@@ -171,6 +247,7 @@ class ServiceRequestAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(ServiceRequestLog)
 class ServiceRequestLogAdmin(UnfoldImportExportModelAdmin):
+    resource_class = ServiceRequestLogResource
     list_display = ['service_request', 'log_type', 'from_station', 'to_station', 'created_by', 'created_at']
     list_filter = ['log_type', 'from_station', 'to_station', 'created_at']
     search_fields = ['service_request__title', 'comment']
@@ -185,6 +262,7 @@ class ServiceRequestLogAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(Report)
 class ReportAdmin(UnfoldImportExportModelAdmin):
+    resource_class = ReportResource
     list_display = ['title', 'service_request', 'needs_outsourcing', 'needs_items', 'created_by', 'created_at']
     list_filter = ['needs_outsourcing', 'needs_items', 'created_at']
     search_fields = ['title', 'description', 'service_request__title']
@@ -192,6 +270,7 @@ class ReportAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(CompletionReport)
 class CompletionReportAdmin(UnfoldImportExportModelAdmin):
+    resource_class = CompletionReportResource
     list_display = ['title', 'service_request', 'created_by', 'created_at']
     list_filter = ['created_at']
     search_fields = ['title', 'description', 'service_request__title']
@@ -199,6 +278,7 @@ class CompletionReportAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(PurchaseOrder)
 class PurchaseOrderAdmin(UnfoldImportExportModelAdmin):
+    resource_class = PurchaseOrderResource
     list_display = ['report', 'refrence_number', 'status', 'created_by', 'created_at']
     list_filter = ['status', 'created_at']
     search_fields = ['refrence_number', 'report__title']
@@ -206,6 +286,7 @@ class PurchaseOrderAdmin(UnfoldImportExportModelAdmin):
 
 @admin.register(InventoryOrder)
 class InventoryOrderAdmin(UnfoldImportExportModelAdmin):
+    resource_class = InventoryOrderResource
     list_display = ['report', 'refrence_number', 'status', 'created_by', 'created_at']
     list_filter = ['status', 'created_at']
     search_fields = ['refrence_number', 'report__title']
