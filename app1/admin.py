@@ -27,8 +27,9 @@ class UserResource(resources.ModelResource):
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
         export_order = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
-        import_id_fields = ('username',)  # Use username as unique identifier for imports
-        skip_unchanged = True
+        import_id_fields = ('id', 'username')  # Can match by id or username - allows override even with different ids
+        skip_unchanged = False  # Allow updates even if unchanged
+        update_or_create = True  # Update existing or create new
         report_skipped = True
         use_natural_foreign_keys = False
     
@@ -46,78 +47,78 @@ class UserResource(resources.ModelResource):
             instance.set_password('123')
         return super().save_instance(instance, using_transactions, dry_run)
 
-# Resource classes for all models
+# Resource classes for all models - configured to allow override/update even with different IDs
 class SectionResource(resources.ModelResource):
     class Meta:
         model = Section
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('name',)  # Match by name first, allows override even with different id
+        skip_unchanged = False  # Allow updates even if unchanged
 
 class UserProfileResource(resources.ModelResource):
     class Meta:
         model = UserProfile
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('user',)  # Match by user, allows override even with different id
+        skip_unchanged = False
 
 class ServiceProviderResource(resources.ModelResource):
     class Meta:
         model = ServiceProvider
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('name',)  # Match by name, allows override even with different id
+        skip_unchanged = False
 
 class StationResource(resources.ModelResource):
     class Meta:
         model = Station
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('name',)  # Match by name, allows override even with different id
+        skip_unchanged = False
 
 class PipelineResource(resources.ModelResource):
     class Meta:
         model = Pipeline
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('name',)  # Match by name, allows override even with different id
+        skip_unchanged = False
 
 class PipelineStationResource(resources.ModelResource):
     class Meta:
         model = PipelineStation
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('id',)  # Match by id
+        skip_unchanged = False
 
 class ServiceRequestResource(resources.ModelResource):
     class Meta:
         model = ServiceRequest
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('title',)  # Match by title, allows override even with different id
+        skip_unchanged = False
 
 class ServiceRequestLogResource(resources.ModelResource):
     class Meta:
         model = ServiceRequestLog
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('id',)  # Match by id
+        skip_unchanged = False
 
 class ReportResource(resources.ModelResource):
     class Meta:
         model = Report
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('title',)  # Match by title, allows override even with different id
+        skip_unchanged = False
 
 class CompletionReportResource(resources.ModelResource):
     class Meta:
         model = CompletionReport
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('title',)  # Match by title, allows override even with different id
+        skip_unchanged = False
 
 class PurchaseOrderResource(resources.ModelResource):
     class Meta:
         model = PurchaseOrder
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('refrence_number',)  # Match by reference number, allows override even with different id
+        skip_unchanged = False
 
 class InventoryOrderResource(resources.ModelResource):
     class Meta:
         model = InventoryOrder
-        import_id_fields = ('id',)
-        skip_unchanged = True
+        import_id_fields = ('refrence_number',)  # Match by reference number, allows override even with different id
+        skip_unchanged = False
 
 # User Admin with import/export
 class UserAdmin(UnfoldImportExportModelAdmin):
