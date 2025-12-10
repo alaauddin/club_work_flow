@@ -162,8 +162,8 @@ def assign_pipeline(request, id):
     service_request = get_object_or_404(ServiceRequest, id=id)
     
     if request.method == 'POST':
-        pipeline_id = request.POST.get('pipeline_id')
-        
+        pipeline_id = request.POST.get('pipeline')
+        print(f'pipeline_id: {pipeline_id}')
         if pipeline_id:
             try:
                 pipeline = Pipeline.objects.get(id=pipeline_id)
@@ -173,9 +173,9 @@ def assign_pipeline(request, id):
                 
                 # Set initial station
                 initial_station = pipeline.get_initial_station()
+                print(f'initial_station: {initial_station}')
                 if initial_station:
                     service_request.current_station = initial_station
-                    service_request.status = 'in_progress'
                 
                 service_request.save()
                 
