@@ -88,20 +88,21 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 # PostgreSQL Database Configuration
-# Try different connection methods if one doesn't work:
-# 1. Unix socket (empty HOST) - works if pg_hba.conf allows local connections
-# 2. localhost instead of 127.0.0.1 - might use different pg_hba.conf rules
-# 3. SSL connection - if SSL is required
+# Since Unix socket and 127.0.0.1 both failed, trying localhost with SSL
 
-# Option 1: Try Unix socket connection first (most likely to work without sudo)
+# Option 2: Try localhost with different SSL modes
+# If 'prefer' doesn't work, try: 'allow', 'disable', or 'require'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'alauddin@123',
-        'HOST': '',  # Empty string uses Unix socket connection
-        'PORT': '',  # Empty string uses default port
+        'HOST': 'localhost',
+        'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'prefer',  # Tries SSL first, falls back to non-SSL if not available
+        },
     }
 }
 
