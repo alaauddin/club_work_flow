@@ -1,0 +1,87 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ section.name }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='app1' %}">App1</a>
+&rsaquo; <a href="{% url 'admin:app1_section_changelist' %}">{% trans 'Sections' %}</a>
+&rsaquo; {{ section.name }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Section Details: {{ section.name }}</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+    <div>
+        <h2>Basic Information</h2>
+        <table>
+            <tr><th>Name:</th><td>{{ section.name }}</td></tr>
+            <tr><th>ID:</th><td>{{ section.pk }}</td></tr>
+        </table>
+        
+        <h2>Managers ({{ managers.count }})</h2>
+        {% if managers %}
+        <ul>
+            {% for manager in managers %}
+            <li><a href="{% url 'admin:auth_user_change' manager.pk %}">{{ manager.username }}</a> ({{ manager.get_full_name|default:manager.email }})</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No managers assigned.</p>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Related Pipelines ({{ pipelines.count }})</h2>
+        {% if pipelines %}
+        <ul>
+            {% for pipeline in pipelines %}
+            <li><a href="{% url 'admin:app1_pipeline_change' pipeline.pk %}">{{ pipeline.name }}</a></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No pipelines associated.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 30px;">
+    <h2>Service Requests ({{ service_requests.count }})</h2>
+    {% if service_requests %}
+    <table style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Service Provider</th>
+                <th>Current Station</th>
+                <th>Created At</th>
+                <th>Created By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in service_requests %}
+            <tr>
+                <td><a href="{% url 'admin:app1_servicerequest_change' request.pk %}">{{ request.title }}</a></td>
+                <td>{{ request.service_provider.name }}</td>
+                <td>{{ request.current_station.name|default:"—" }}</td>
+                <td>{{ request.created_at|date:"Y-m-d H:i" }}</td>
+                <td>{{ request.created_by.username }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No service requests in this section.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 30px;">
+    <a href="{% url 'admin:app1_section_change' section.pk %}" class="button">Edit Section</a>
+    <a href="{% url 'admin:app1_section_changelist' %}" class="button">Back to List</a>
+</div>
+{% endblock %}
+

@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Selected Sections | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block content %}
+<h1>Selected Sections ({{ sections.count }})</h1>
+
+{% if sections %}
+<table style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Managers Count</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for section in sections %}
+        <tr>
+            <td>{{ section.name }}</td>
+            <td>{{ section.manager.count }}</td>
+            <td>
+                <a href="{% url 'admin:section_detail_view' section.pk %}">View Details</a> |
+                <a href="{% url 'admin:app1_section_change' section.pk %}">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No sections selected.</p>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'admin:app1_section_changelist' %}" class="button">Back to Section List</a>
+</div>
+{% endblock %}
+

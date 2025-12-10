@@ -1,0 +1,129 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block title %}{{ user.username }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{% url 'admin:app_list' app_label='auth' %}">{% trans 'Authentication and Authorization' %}</a>
+&rsaquo; <a href="{% url 'admin:auth_user_changelist' %}">{% trans 'Users' %}</a>
+&rsaquo; {{ user.username }}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>User Details: {{ user.username }}</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+    <div>
+        <h2>Basic Information</h2>
+        <table>
+            <tr><th>Username:</th><td>{{ user.username }}</td></tr>
+            <tr><th>Email:</th><td>{{ user.email|default:"—" }}</td></tr>
+            <tr><th>First Name:</th><td>{{ user.first_name|default:"—" }}</td></tr>
+            <tr><th>Last Name:</th><td>{{ user.last_name|default:"—" }}</td></tr>
+            <tr><th>Is Staff:</th><td>{{ user.is_staff|yesno:"Yes,No" }}</td></tr>
+            <tr><th>Is Active:</th><td>{{ user.is_active|yesno:"Yes,No" }}</td></tr>
+            <tr><th>Is Superuser:</th><td>{{ user.is_superuser|yesno:"Yes,No" }}</td></tr>
+            <tr><th>Date Joined:</th><td>{{ user.date_joined|date:"Y-m-d H:i" }}</td></tr>
+            <tr><th>Last Login:</th><td>{{ user.last_login|date:"Y-m-d H:i"|default:"Never" }}</td></tr>
+        </table>
+        
+        {% if user_profile %}
+        <h2>Profile Information</h2>
+        <table>
+            <tr><th>Phone:</th><td>{{ user_profile.phone|default:"—" }}</td></tr>
+        </table>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Related Information</h2>
+        
+        <h3>Manages Sections ({{ sections_managed.count }})</h3>
+        {% if sections_managed %}
+        <ul>
+            {% for section in sections_managed %}
+            <li><a href="{% url 'admin:app1_section_change' section.pk %}">{{ section.name }}</a></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No sections managed.</p>
+        {% endif %}
+        
+        <h3>Manages Service Providers ({{ service_providers_managed.count }})</h3>
+        {% if service_providers_managed %}
+        <ul>
+            {% for provider in service_providers_managed %}
+            <li><a href="{% url 'admin:app1_serviceprovider_change' provider.pk %}">{{ provider.name }}</a></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No service providers managed.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 30px;">
+    <h2>Service Requests Created ({{ created_requests.count }})</h2>
+    {% if created_requests %}
+    <table style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Section</th>
+                <th>Service Provider</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in created_requests %}
+            <tr>
+                <td><a href="{% url 'admin:app1_servicerequest_change' request.pk %}">{{ request.title }}</a></td>
+                <td>{{ request.section.name }}</td>
+                <td>{{ request.service_provider.name }}</td>
+                <td>{{ request.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No service requests created.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 30px;">
+    <h2>Service Requests Assigned ({{ assigned_requests.count }})</h2>
+    {% if assigned_requests %}
+    <table style="width: 100%;">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Section</th>
+                <th>Service Provider</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in assigned_requests %}
+            <tr>
+                <td><a href="{% url 'admin:app1_servicerequest_change' request.pk %}">{{ request.title }}</a></td>
+                <td>{{ request.section.name }}</td>
+                <td>{{ request.service_provider.name }}</td>
+                <td>{{ request.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No service requests assigned.</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 30px;">
+    <a href="{% url 'admin:auth_user_change' user.pk %}" class="button">Edit User</a>
+    <a href="{% url 'admin:auth_user_changelist' %}" class="button">Back to List</a>
+</div>
+{% endblock %}
+

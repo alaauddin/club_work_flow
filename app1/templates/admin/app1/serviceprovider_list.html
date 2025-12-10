@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Selected Service Providers | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block content %}
+<h1>Selected Service Providers ({{ providers.count }})</h1>
+
+{% if providers %}
+<table style="width: 100%;">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Managers Count</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for provider in providers %}
+        <tr>
+            <td>{{ provider.name }}</td>
+            <td>{{ provider.manager.count }}</td>
+            <td>
+                <a href="{% url 'admin:serviceprovider_detail_view' provider.pk %}">View Details</a> |
+                <a href="{% url 'admin:app1_serviceprovider_change' provider.pk %}">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No service providers selected.</p>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'admin:app1_serviceprovider_changelist' %}" class="button">Back to Service Provider List</a>
+</div>
+{% endblock %}
+

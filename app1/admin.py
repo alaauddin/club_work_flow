@@ -1,5 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
+from django.urls import reverse
+from django.shortcuts import redirect, render
+from django.http import HttpResponseRedirect
+from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
@@ -176,9 +180,39 @@ class InventoryOrderResource(resources.ModelResource):
 # User Admin with import/export
 class UserAdmin(UnfoldImportExportModelAdmin):
     resource_class = UserResource
-    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined')
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined', 'view_details_link')
     list_filter = ('is_staff', 'is_active', 'is_superuser', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
+    actions = ['view_selected_details', 'activate_users', 'deactivate_users']
+    
+    def view_details_link(self, obj):
+        """Create a link to view user details"""
+        url = reverse('admin:user_detail_view', args=[obj.pk])
+        return format_html('<a href="{}">View Details</a>', url)
+    view_details_link.short_description = 'Actions'
+    
+    def view_selected_details(self, request, queryset):
+        """Admin action to view details of selected users"""
+        if queryset.count() == 1:
+            # If only one user selected, redirect to detail view
+            user = queryset.first()
+            return redirect('admin:user_detail_view', pk=user.pk)
+        else:
+            # If multiple users, show list view
+            return redirect('admin:user_list_view')
+    view_selected_details.short_description = 'View details of selected users'
+    
+    def activate_users(self, request, queryset):
+        """Admin action to activate selected users"""
+        count = queryset.update(is_active=True)
+        self.message_user(request, f'Successfully activated {count} user(s).')
+    activate_users.short_description = 'Activate selected users'
+    
+    def deactivate_users(self, request, queryset):
+        """Admin action to deactivate selected users"""
+        count = queryset.update(is_active=False)
+        self.message_user(request, f'Successfully deactivated {count} user(s).')
+    deactivate_users.short_description = 'Deactivate selected users'
 
 # Unregister User if already registered, then register with our custom admin
 try:
@@ -191,8 +225,29 @@ admin.site.register(User, UserAdmin)
 @admin.register(Section)
 class SectionAdmin(UnfoldImportExportModelAdmin):
     resource_class = SectionResource
-    list_display = ['name']
+    list_display = ['name', 'get_manager_count', 'view_details_link']
     filter_horizontal = ['manager']
+    actions = ['view_selected_details']
+    
+    def get_manager_count(self, obj):
+        """Display count of managers"""
+        return obj.manager.count()
+    get_manager_count.short_description = 'Managers'
+    
+    def view_details_link(self, obj):
+        """Create a link to view section details"""
+        url = reverse('admin:section_detail_view', args=[obj.pk])
+        return format_html('<a href="{}">View Details</a>', url)
+    view_details_link.short_description = 'Actions'
+    
+    def view_selected_details(self, request, queryset):
+        """Admin action to view details of selected sections"""
+        if queryset.count() == 1:
+            section = queryset.first()
+            return redirect('admin:section_detail_view', pk=section.pk)
+        else:
+            return redirect('admin:section_list_view')
+    view_selected_details.short_description = 'View details of selected sections'
 
 
 @admin.register(UserProfile)
@@ -205,8 +260,29 @@ class UserProfileAdmin(UnfoldImportExportModelAdmin):
 @admin.register(ServiceProvider)
 class ServiceProviderAdmin(UnfoldImportExportModelAdmin):
     resource_class = ServiceProviderResource
-    list_display = ['name']
+    list_display = ['name', 'get_manager_count', 'view_details_link']
     filter_horizontal = ['manager']
+    actions = ['view_selected_details']
+    
+    def get_manager_count(self, obj):
+        """Display count of managers"""
+        return obj.manager.count()
+    get_manager_count.short_description = 'Managers'
+    
+    def view_details_link(self, obj):
+        """Create a link to view service provider details"""
+        url = reverse('admin:serviceprovider_detail_view', args=[obj.pk])
+        return format_html('<a href="{}">View Details</a>', url)
+    view_details_link.short_description = 'Actions'
+    
+    def view_selected_details(self, request, queryset):
+        """Admin action to view details of selected service providers"""
+        if queryset.count() == 1:
+            provider = queryset.first()
+            return redirect('admin:serviceprovider_detail_view', pk=provider.pk)
+        else:
+            return redirect('admin:serviceprovider_list_view')
+    view_selected_details.short_description = 'View details of selected service providers'
 
 
 @admin.register(Station)
