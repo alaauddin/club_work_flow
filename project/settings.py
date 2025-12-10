@@ -87,6 +87,7 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 # PostgreSQL Database Configuration
+# PostgreSQL Database Configuration
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -97,12 +98,12 @@ DATABASES = {
         'PORT': '5432',
         'OPTIONS': {
             'connect_timeout': 10,
-            # *** ADDED OPTION: Try forcing SSL mode ***
-            'sslmode': 'require',
+            # *** CRITICAL FIX: Set SSL mode to 'disable' or 'allow' ***
+            # 'disable' is the most definitive fix here.
+            'sslmode': 'disable', 
         },
     }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
