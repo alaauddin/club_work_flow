@@ -96,7 +96,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'spordjei_club_work_flow',
-        'USER': 'club_work_flow_db_user',
+        'USER': 'spordjei_club_work_flow_db_user',
         'PASSWORD': 'alauddin@123',
         'HOST': '127.0.0.1',  # Try 127.0.0.1 instead of localhost if authentication fails
         'PORT': '3306',
