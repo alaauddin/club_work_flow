@@ -93,16 +93,16 @@ DATABASES = {
     }
 }
 # posgresql
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'spordjei_club_work_flow',
-#         'USER': 'club_work_flow_db_user',
-#         'PASSWORD': 'UZ7Kb?c~KbHd',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'spordjei_club_work_flow',
+        'USER': 'club_work_flow_db_user',
+        'PASSWORD': 'UZ7Kb?c~KbHd',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
 
 
 # Password validation
