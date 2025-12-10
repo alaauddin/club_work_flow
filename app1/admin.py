@@ -27,13 +27,35 @@ class UserResource(resources.ModelResource):
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
         export_order = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
+        import_id_fields = ('username',)  # Use username as unique identifier for imports
+        skip_unchanged = True
+        report_skipped = True
+        use_natural_foreign_keys = False
+    
+    def before_import_row(self, row, **kwargs):
+        """Handle special fields before import"""
+        # Ensure required fields are present
+        if 'username' not in row or not row['username']:
+            raise ValueError("Username is required")
+        return row
+    
+    def save_instance(self, instance, using_transactions=True, dry_run=False):
+        """Set password to '123' for all imported users"""
+        if not dry_run:
+            # Set password to '123' for all users during import
+            instance.set_password('123')
+        return super().save_instance(instance, using_transactions, dry_run)
 
 # User Admin with import/export
 class UserAdmin(UnfoldImportExportModelAdmin):
-    resource_class = UserResource
+    resource_classes = [UserResource]  # Use resource_classes instead of resource_class for Unfold compatibility
     list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined')
     list_filter = ('is_staff', 'is_active', 'is_superuser', 'date_joined')
     search_fields = ('username', 'email', 'first_name', 'last_name')
+    
+    def get_resource_class(self):
+        """Return the resource class for import/export"""
+        return UserResource
 
 # Unregister User if already registered, then register with our custom admin
 try:
