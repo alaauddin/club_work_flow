@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -86,19 +87,18 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# PostgreSQL Database Configuration
-# PostgreSQL Database Configuration
+# PostgreSQL Database Configuration using dj-database-url
+# You can set DATABASE_URL environment variable, or it will use the default below
+# Format: postgresql://user:password@host:port/database
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'spordjei_club_work_flow',
-        'USER': 'club_work_flow_db_user',
-        'PASSWORD': 'UZ7Kb?c~KbHd',
-        'HOST': '127.0.0.1',
-        'PORT': '5432',
-
-
-    }
+    'default': dj_database_url.config(
+        default=os.environ.get(
+            'DATABASE_URL',
+            'postgresql://club_work_flow_db_user:UZ7Kb?c~KbHd@127.0.0.1:5432/spordjei_club_work_flow'
+        ),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
