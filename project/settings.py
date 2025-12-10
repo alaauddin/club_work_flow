@@ -96,9 +96,7 @@ DATABASES = {
         'PASSWORD': 'UZ7Kb?c~KbHd',
         'HOST': '127.0.0.1',
         'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': '/home/spordjei/ssl/khial_sportainmentclub_com_c0153_daa89_1767139199_bc1e759aeac40b9b656f08480a3faa54.crt',
-        },
+
 
     }
 }
