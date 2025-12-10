@@ -32,7 +32,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['https://net.sportainmentclub.com/','http://net.sportainmentclub.com/','net.sportainmentclub.com','127.0.0.1']
 
-
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 
 # Application definition
