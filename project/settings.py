@@ -90,18 +90,13 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # PostgreSQL Database Configuration
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'UZ7Kb?c~KbHd',
         'HOST': '127.0.0.1',
         'PORT': '5432',
-        'OPTIONS': {
-            'connect_timeout': 10,
-            # *** CRITICAL FIX: Set SSL mode to 'disable' or 'allow' ***
-            # 'disable' is the most definitive fix here.
-            'sslmode': 'disable', 
-        },
+
     }
 }
 # Password validation
