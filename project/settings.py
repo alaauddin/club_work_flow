@@ -14,12 +14,8 @@ from pathlib import Path
 import os
 import dj_database_url
 
-# Configure PyMySQL as MySQL driver (if using PyMySQL instead of mysqlclient)
-try:
-    import pymysql
-    pymysql.install_as_MySQLdb()
-except ImportError:
-    pass
+# MySQL Connector configuration (using mysql.connector.django)
+# No additional configuration needed for mysql.connector
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -95,19 +91,22 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 # MySQL Database Configuration with UTF-8 support for English and Arabic
+# Using mysql.connector.django engine
 DATABASES = {
     'default': {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'alauddin@123',
-        'HOST': 'localhost',
+        'HOST': '127.0.0.1',  # Try 127.0.0.1 instead of localhost if authentication fails
         'PORT': '3306',
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', character_set_connection=utf8mb4, collation_connection=utf8mb4_unicode_ci",
             'use_unicode': True,
+            'autocommit': True,
         },
+        'CONN_MAX_AGE': 600,
     }
 }
 
