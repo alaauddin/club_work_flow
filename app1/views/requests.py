@@ -173,7 +173,6 @@ def assign_pipeline(request, id):
                 
                 # Set initial station
                 initial_station = pipeline.get_initial_station()
-                print(f'initial_station: {initial_station}')
                 if initial_station:
                     service_request.current_station = initial_station
                 
