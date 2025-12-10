@@ -28,6 +28,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['https://net.sportainmentclub.com/','http://net.sportainmentclub.com/','net.sportainmentclub.com']
 
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+
 
 # Application definition
 
@@ -38,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'import_export',
     'app1',
     'widget_tweaks',
     'accounts',
