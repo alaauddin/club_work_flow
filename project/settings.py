@@ -93,14 +93,15 @@ DATABASES = {
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'UZ7Kb?c~KbHd',
-        'HOST': '127.0.0.1',  # Use IPv4 instead of localhost to avoid IPv6 issues
-        'PORT': '5432',  # Explicitly set PostgreSQL default port
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
         'OPTIONS': {
             'connect_timeout': 10,
+            # *** ADDED OPTION: Try forcing SSL mode ***
+            'sslmode': 'require',
         },
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
