@@ -97,7 +97,7 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # MySQL Database Configuration with UTF-8 support for English and Arabic
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': 'mysql.connector.django',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
         'PASSWORD': 'alauddin@123',
