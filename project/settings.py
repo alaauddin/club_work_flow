@@ -90,11 +90,12 @@ WSGI_APPLICATION = 'project.wsgi.application'
 # PostgreSQL Database Configuration using dj-database-url
 # You can set DATABASE_URL environment variable, or it will use the default below
 # Format: postgresql://user:password@host:port/database
+# Note: Password is URL-encoded (? = %3F, ~ = %7E)
 DATABASES = {
     'default': dj_database_url.config(
         default=os.environ.get(
             'DATABASE_URL',
-            'postgresql://club_work_flow_db_user:UZ7Kb?c~KbHd@127.0.0.1:5432/spordjei_club_work_flow'
+            'postgresql://club_work_flow_db_user:alauddin@123@127.0.0.1:5432/spordjei_club_work_flow'
         ),
         conn_max_age=600,
         conn_health_checks=True,
