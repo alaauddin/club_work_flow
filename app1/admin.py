@@ -27,9 +27,8 @@ class UserResource(resources.ModelResource):
         model = User
         fields = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
         export_order = ('id', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'is_superuser', 'date_joined', 'last_login')
-        import_id_fields = ('id', 'username')  # Can match by id or username - allows override even with different ids
+        import_id_fields = ('username',)  # Match by username - allows override even with different id
         skip_unchanged = False  # Allow updates even if unchanged
-        update_or_create = True  # Update existing or create new
         report_skipped = True
         use_natural_foreign_keys = False
     
