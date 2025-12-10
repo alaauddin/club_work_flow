@@ -100,7 +100,7 @@ DATABASES = {
         'ENGINE': 'mysql.connector.django',
         'NAME': 'spordjei_club_work_flow',
         'USER': 'club_work_flow_db_user',
-        'PASSWORD': 'alauddin@123',
+        'PASSWORD': 'UZ7Kb?c~KbHd',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
