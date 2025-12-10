@@ -29,9 +29,15 @@ DEBUG = True
 ALLOWED_HOSTS = ['https://net.sportainmentclub.com/','http://net.sportainmentclub.com/','net.sportainmentclub.com','127.0.0.1']
 
 
+
+
 # Application definition
 
 INSTALLED_APPS = [
+    'unfold',  # Must be before django.contrib.admin
+    'unfold.contrib.filters',  # Optional: for advanced filters
+    'unfold.contrib.forms',  # Optional: for better forms
+    'unfold.contrib.import_export',  # For django-import-export integration
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -86,6 +92,17 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+# posgresql
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'spordjei_club_work_flow',
+#         'USER': 'club_work_flow_db_user',
+#         'PASSWORD': 'UZ7Kb?c~KbHd',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 
 # Password validation
@@ -141,6 +158,18 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGOUT_REDIRECT_URL = 'home'
 LOGIN_REDIRECT_URL = 'home'
+
+# Unfold Admin Configuration
+UNFOLD = {
+    "SITE_TITLE": "Club Work Flow Admin",
+    "SITE_HEADER": "Club Work Flow Administration",
+    "SITE_URL": "/",
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "STYLES": [
+        lambda request: "/static/css/unfold-custom.css",
+    ],
+}
 
 
 # logger settings

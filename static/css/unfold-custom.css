@@ -1,0 +1,25 @@
+/* Custom CSS for Unfold Admin - Full Width Container */
+/* Target the content container to take full width */
+#content.container,
+#content.container.mx-auto,
+#content.container.colM,
+#content.container.mx-auto.colM {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+/* Alternative: If you want to completely remove container constraints */
+/* Uncomment the following to remove all container restrictions */
+/*
+#content.container {
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+*/
+
