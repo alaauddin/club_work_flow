@@ -159,42 +159,72 @@ def print_request(request, id):
 
 def assign_pipeline(request, id):
     """Assign a pipeline to a service request and optionally create an initial report"""
-    service_request = get_object_or_404(ServiceRequest, id=id)
+    service_request = ServiceRequest.objects.get(id=id)
+    
+    # Only allow if no pipeline assigned yet
+    if service_request.pipeline:
+        messages.warning(request, 'تم تعيين مسار عمل بالفعل لهذا الطلب')
+        return redirect('request_detail', id=id)
     
     if request.method == 'POST':
         pipeline_id = request.POST.get('pipeline')
-        print(f'pipeline_id: {pipeline_id}')
+        
         if pipeline_id:
-            try:
-                pipeline = Pipeline.objects.get(id=pipeline_id)
-                
-                # Assign pipeline
-                service_request.pipeline = pipeline
-                
-                # Set initial station
-                initial_station = pipeline.get_initial_station()
-                if initial_station:
-                    service_request.current_station = initial_station
-                
-                service_request.save()
-                
-                # Create log entry
-                ServiceRequestLog.objects.create(
-                    service_request=service_request,
-                    log_type='status_change',
-                    comment=f'تم تعيين مسار العمل: {pipeline.name_ar}',
-                    created_by=request.user
-                )
-                
-                messages.success(request, f'تم تعيين مسار العمل {pipeline.name_ar} بنجاح')
-                
-            except Pipeline.DoesNotExist:
-                messages.error(request, 'مسار العمل غير موجود')
+            pipeline = Pipeline.objects.get(id=pipeline_id)
+            initial_station = pipeline.get_initial_station()
+            
+            if not initial_station:
+                messages.error(request, 'خطأ: المسار المحدد لا يحتوي على محطة ابتدائية')
+                return redirect('request_detail', id=id)
+            
+            # Assign pipeline and initial station
+            service_request.pipeline = pipeline
+            service_request.current_station = initial_station
+            service_request.save()
+            
+            # Log the assignment
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                to_station=initial_station,
+                log_type='station_change',
+                comment=f'تم تعيين مسار العمل: {pipeline.name_ar} وبدء المحطة: {initial_station.name_ar}',
+                created_by=request.user
+            )
+            
+            # Report creation is now MANDATORY
+            report_title = request.POST.get('report_title', '').strip()
+            report_description = request.POST.get('report_description', '').strip()
+            
+            if not report_title or not report_description:
+                messages.error(request, 'الرجاء إدخال عنوان وتفاصيل التقرير')
+                return redirect('request_detail', id=id)
+            
+            # Create the mandatory report
+            report = Report.objects.create(
+                service_request=service_request,
+                title=report_title,
+                description=report_description,
+                needs_outsourcing=False,
+                needs_items=False,
+                created_by=request.user
+            )
+            
+            # Log report creation
+            ServiceRequestLog.objects.create(
+                service_request=service_request,
+                log_type='update',
+                comment=f'تم إنشاء تقرير مبدئي: {report_title}',
+                created_by=request.user
+            )
+            
+            messages.success(request, f'تم تعيين مسار العمل و إنشاء التقرير بنجاح')
+            return redirect('request_detail', id=id)
         else:
             messages.error(request, 'الرجاء اختيار مسار عمل')
-            
+            return redirect('request_detail', id=id)
+    
+    # GET request - redirect to request_detail (modal handles the UI)
     return redirect('request_detail', id=id)
-
 
 def create_service_request(request):
     sections = Section.objects.filter(manager=request.user)
