@@ -92,9 +92,10 @@ def create_report(request, id):
 
 
 def create_completion_report(request, id):
+    service_request = get_object_or_404(ServiceRequest, id=id)
+    
     if request.method == 'POST':
         logger.info(f'Creating completion report for service request {id} by user {request.user}')
-        service_request = ServiceRequest.objects.get(id=id)
         report_details = request.POST.get('report_details')
         reports = Report.objects.filter(service_request=service_request)
         
@@ -156,12 +157,19 @@ def create_completion_report(request, id):
         messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح والانتقال للمحطة التالية')
         logger.info(f'Completion report workflow completed for request {id}')
         return redirect('request_detail', id=id)
+    
+    # GET request - show the form page
+    context = {
+        'service_request': service_request,
+    }
+    return render(request, 'write/create_completion_report.html', context)
 
 
 def create_purchase_order(request, id):
+    service_request = get_object_or_404(ServiceRequest, id=id)
+    report = Report.objects.filter(service_request=service_request).first()
+    
     if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report = Report.objects.filter(service_request=service_request).first()
         purchase_request_refrence = request.POST.get('purchase_request_refrence')
         
         if report:
@@ -184,12 +192,24 @@ def create_purchase_order(request, id):
         else:
             messages.error(request, 'التقرير غير موجود')
             return redirect('request_detail', id=id)
+    
+    # GET request - show the form page
+    if not report:
+        messages.error(request, 'التقرير غير موجود')
+        return redirect('request_detail', id=id)
+    
+    context = {
+        'service_request': service_request,
+        'report': report,
+    }
+    return render(request, 'write/create_purchase_order.html', context)
 
 
 def create_inventory_order(request, id):
+    service_request = get_object_or_404(ServiceRequest, id=id)
+    report = Report.objects.filter(service_request=service_request).first()
+    
     if request.method == 'POST':
-        service_request = ServiceRequest.objects.get(id=id)
-        report = Report.objects.filter(service_request=service_request).first()
         inventory_order_refrence = request.POST.get('inventory_order_refrence')
         
         if report:
@@ -212,6 +232,17 @@ def create_inventory_order(request, id):
         else:
             messages.error(request, 'التقرير غير موجود')
             return redirect('request_detail', id=id)
+    
+    # GET request - show the form page
+    if not report:
+        messages.error(request, 'التقرير غير موجود')
+        return redirect('request_detail', id=id)
+    
+    context = {
+        'service_request': service_request,
+        'report': report,
+    }
+    return render(request, 'write/create_inventory_order.html', context)
 
 
 def edit_completion_report(request, id):

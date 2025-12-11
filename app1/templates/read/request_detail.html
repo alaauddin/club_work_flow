@@ -312,9 +312,9 @@
                   <h5 class="text-success mb-0"><i class="fas fa-check-circle ms-2"></i> تقارير الإنجاز</h5>
                   {% if not service_request.is_completed %}
                     {% if not completion_reports and can_create_completion_report %}
-                      <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#completionReportModal">
+                      <a href="{% url 'create_completion_report' service_request.id %}" class="btn btn-sm btn-outline-success">
                         <i class="fas fa-plus ms-1"></i> إضافة
-                      </button>
+                      </a>
                     {% elif completion_reports and can_edit_completion_report %}
                       <div class="dropdown">
                         <button class="btn btn-sm btn-success dropdown-toggle" type="button" id="completionActions" data-bs-toggle="dropdown" aria-expanded="false">
@@ -336,6 +336,7 @@
                       <div class="small text-muted">{{ completion_report.created_by }} ({{ completion_report.created_at }})</div>
                       <p class="mb-0 mt-2 text-muted">{{ completion_report.description }}</p>
                     </li>
+                    
                   {% empty %}
                     <li class="list-group-item text-muted">لا توجد تقارير إنجاز متاحة.</li>
                   {% endfor %}
@@ -361,9 +362,9 @@
                         </ul>
                       </div>
                     {% elif can_create_purchase_order and not report.purchase_order %}
-                      <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reportModal4">
+                      <a href="{% url 'create_purchase_order' service_request.id %}" class="btn btn-sm btn-outline-primary">
                         <i class="fas fa-plus ms-1"></i> إضافة
-                      </button>
+                      </a>
                     {% endif %}
                   {% endif %}
                 </div>
@@ -395,9 +396,9 @@
                         </ul>
                       </div>
                     {% elif can_create_inventory_order and not report.inventory_order %}
-                      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#reportModal5">
+                      <a href="{% url 'create_inventory_order' service_request.id %}" class="btn btn-sm btn-outline-danger">
                         <i class="fas fa-plus ms-1"></i> إضافة
-                      </button>
+                      </a>
                     {% endif %}
                   {% endif %}
                 </div>
@@ -451,127 +452,15 @@
     {% endif %}
   </div>
 
-  <!-- Modals -->
-  <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="reportModalLabel">إنشاء تقرير احتياج مواد</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="reportForm" action="{% url 'create_report' service_request.id %}" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="reportTitle" class="form-label">عنوان التقرير</label>
-              <input type="text" name="report_title" class="form-control" id="reportTitle" required>
-            </div>
-            <div class="mb-3">
-              <label for="reportDescription" class="form-label">تفاصيل التقرير</label>
-              <textarea class="form-control" name="report_description" id="reportDescription" rows="3" required></textarea>
-            </div>
-            <div class="mb-3">
-              <label for="purchaseOrder" class="form-label">مرجع طلب الشراء</label>
-              <input type="text" name="purchase_request_refrence" class="form-control" id="purchaseOrder">
-            </div>
-            <div class="mb-3">
-              <label for="inventoryOrder" class="form-label">مرجع الطلب المخزني</label>
-              <input type="text" name="inventory_order_refrence" class="form-control" id="inventoryOrder">
-            </div>
-            <div class="text-end">
-              <button type="submit" class="btn btn-primary">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
 
 
-  <!-- Completion Report Modal -->
-  <div class="modal fade" id="completionReportModal" tabindex="-1" aria-labelledby="completionReportModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header bg-success text-white">
-          <h5 class="modal-title" id="completionReportModalLabel">إنشاء تقرير إنجاز</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form action="{% url 'create_completion_report' service_request.id %}" method="POST" id="completionReportForm">
-          {% csrf_token %}
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="completionDetails" class="form-label">تفاصيل التقرير <span class="text-danger">*</span></label>
-              <textarea class="form-control" name="report_details" id="completionDetails" rows="4" required placeholder="أدخل تفاصيل تقرير الإنجاز..."></textarea>
-            </div>
-            <div class="alert alert-info small mb-0" role="alert">
-              <i class="fas fa-info-circle ms-2"></i>
-              <strong>ملاحظة:</strong> سيتم تلقائياً الانتقال إلى المحطة التالية بعد إنشاء التقرير.
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-              <i class="fas fa-times ms-2"></i>إلغاء
-            </button>
-            <button type="submit" class="btn btn-success">
-              <i class="fas fa-check ms-2"></i>تسليم
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
 
-  <div class="modal fade" id="reportModal4" tabindex="-1" aria-labelledby="reportModal4Label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="reportModal4Label">إضافة طلب شراء</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form action="{% url 'create_purchase_order' service_request.id %}" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="purchaseReference" class="form-label">مرجع طلب الشراء</label>
-              <textarea class="form-control" name="purchase_request_refrence" id="purchaseReference" rows="3" required></textarea>
-            </div>
-            <div class="text-end">
-              <button type="submit" class="btn btn-primary">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <div class="modal fade" id="reportModal5" tabindex="-1" aria-labelledby="reportModal5Label" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header bg-danger text-white">
-          <h5 class="modal-title" id="reportModal5Label">إضافة طلب مخزون</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form action="{% url 'create_inventory_order' service_request.id %}" method="POST">
-            {% csrf_token %}
-            <div class="mb-3">
-              <label for="inventoryReference" class="form-label">مرجع الطلب المخزني</label>
-              <textarea class="form-control" name="inventory_order_refrence" id="inventoryReference" rows="3" required></textarea>
-            </div>
-            <div class="text-end">
-              <button type="submit" class="btn btn-danger">تسليم</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
+
+
 
   <!-- Assign Pipeline Modal -->
-  <div class="modal fade" id="assignPipelineModal" tabindex="-1" aria-labelledby="assignPipelineModalLabel" aria-hidden="true">
+  <div class="modal " id="assignPipelineModal" tabindex="-1" aria-labelledby="assignPipelineModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
@@ -664,29 +553,6 @@
       });
     });
 
-    // Fix completion report modal stability
-    const completionModal = document.getElementById('completionReportModal');
-    if (completionModal) {
-      // Reset form when modal is hidden
-      completionModal.addEventListener('hidden.bs.modal', function () {
-        const form = document.getElementById('completionReportForm');
-        if (form) {
-          form.reset();
-        }
-      });
-      
-      // Prevent modal from closing on backdrop click during form submission
-      const completionForm = document.getElementById('completionReportForm');
-      if (completionForm) {
-        completionForm.addEventListener('submit', function(e) {
-          const submitBtn = this.querySelector('button[type="submit"]');
-          if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin ms-2"></i>جاري المعالجة...';
-          }
-        });
-      }
-    }
   </script>
 </div>
 {% endblock %}

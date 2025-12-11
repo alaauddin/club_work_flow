@@ -1051,9 +1051,10 @@ def create_report(request, id):
 
 
 def create_completion_report(request, id):
+    service_request = get_object_or_404(ServiceRequest, id=id)
+    
     if request.method == 'POST':
         logger.info(f'Creating completion report for service request {id} by user {request.user}')
-        service_request = ServiceRequest.objects.get(id=id)
         report_details = request.POST.get('report_details')
         reports = Report.objects.filter(service_request=service_request)
         
@@ -1115,6 +1116,12 @@ def create_completion_report(request, id):
         messages.success(request, 'تم إنشاء تقرير إنجاز بنجاح والانتقال للمحطة التالية')
         logger.info(f'Completion report workflow completed for request {id}')
         return redirect('request_detail', id=id)
+    
+    # GET request - show the form page
+    context = {
+        'service_request': service_request,
+    }
+    return render(request, 'write/create_completion_report.html', context)
 
 
 def create_purchase_order(request, id):
