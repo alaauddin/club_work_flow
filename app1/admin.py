@@ -383,11 +383,7 @@ class ServiceRequestLogAdmin(UnfoldImportExportModelAdmin):
     search_fields = ['service_request__title', 'comment']
     readonly_fields = ['service_request', 'from_station', 'to_station', 'log_type', 'comment', 'created_at', 'created_by']
     
-    def has_add_permission(self, request):
-        return False
-    
-    def has_delete_permission(self, request, obj=None):
-        return False
+
 
 
 @admin.register(Report)
